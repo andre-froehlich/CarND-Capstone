@@ -46,7 +46,7 @@ class WaypointUpdater(object):
     def loop(self):
         rate = rospy.Rate(10)  # 10Hz
         while not rospy.is_shutdown():
-            if self.base_waypoints != None and self.pose != None:
+            if self.base_waypoints is not None and self.pose is not None:
                 closest_dist = float("inf")
                 closest_index = 0
 
@@ -126,7 +126,7 @@ class WaypointUpdater(object):
                                                                  self.pose.position.y))
 
     def waypoints_cb(self, waypoints):
-        if self.base_waypoints == None:
+        if self.base_waypoints is None:
             self.base_waypoints = waypoints
             self.len_waypoints = len(self.base_waypoints.waypoints)
             rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))

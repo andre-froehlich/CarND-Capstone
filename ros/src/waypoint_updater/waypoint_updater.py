@@ -21,7 +21,6 @@ as well as to verify your TL classifier.
 
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
-
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 
 
@@ -47,19 +46,19 @@ class WaypointUpdater(object):
     def loop(self):
         rate = rospy.Rate(10)  # 10Hz
         while not rospy.is_shutdown():
-            if (self.base_waypoints != None and self.pose != None):
+            if self.base_waypoints != None and self.pose != None:
                 closest_dist = float("inf")
                 closest_index = 0
 
                 for i in range(0, self.len_waypoints):
                     curr_dist = self.squared_dist(i)
-                    if (curr_dist < closest_dist):
+                    if curr_dist < closest_dist:
                         closest_dist = curr_dist
                         closest_index = i
 
-                if (self.check_is_behind(closest_index)):
+                if self.check_is_behind(closest_index):
                     closest_index += 1
-                    if (closest_index == self.len_waypoints):
+                    if closest_index == self.len_waypoints:
                         closest_index = 0
 
                 rospy.loginfo("Closed Waypoint index is: {}, x={}, y={}".
@@ -68,7 +67,7 @@ class WaypointUpdater(object):
                                      self.base_waypoints.waypoints[closest_index].pose.pose.position.y))
 
                 final_waypoints = None
-                if (closest_index < self.len_waypoints - LOOKAHEAD_WPS):
+                if closest_index < self.len_waypoints - LOOKAHEAD_WPS:
                     final_waypoints = self.base_waypoints.waypoints[closest_index:closest_index + LOOKAHEAD_WPS]
                 else:
                     final_waypoints = self.base_waypoints.waypoints[closest_index:]
@@ -94,23 +93,23 @@ class WaypointUpdater(object):
         dy = self.base_waypoints.waypoints[index].pose.pose.position.y - self.pose.position.y
         wp_angle = None
 
-        if (dy == 0):
-            if (dx >= 0):
+        if dy == 0:
+            if dx >= 0:
                 wp_angle = 0.5 * math.pi
             else:
                 wp_angle = 1.5 * math.pi
-        elif (dx >= 0.0 and dy > 0.0):
+        elif dx >= 0.0 and dy > 0.0:
             wp_angle = math.atan(dx / dy)
-        elif (dx >= 0.0 and dy < 0.0):
+        elif dx >= 0.0 and dy < 0.0:
             wp_angle = math.pi - math.atan(-dx / dy)
-        elif (dx < 0.0 and dy < 0.0):
+        elif dx < 0.0 and dy < 0.0:
             wp_angle = math.pi + math.atan(dx / dy)
         else:
             wp_angle = 2 * math.pi - math.atan(-dx / dy)
 
         # Normalize car's angle?
         delta_angle = abs(wp_angle - self.pose.orientation.w)
-        if (delta_angle >= 0.5 * math.pi and delta_angle <= 1.5 * math.pi):
+        if delta_angle >= 0.5 * math.pi and delta_angle <= 1.5 * math.pi:
             return True
         else:
             return False
@@ -127,7 +126,7 @@ class WaypointUpdater(object):
                                                                  self.pose.position.y))
 
     def waypoints_cb(self, waypoints):
-        if (self.base_waypoints == None):
+        if self.base_waypoints == None:
             self.base_waypoints = waypoints
             self.len_waypoints = len(self.base_waypoints.waypoints)
             rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))

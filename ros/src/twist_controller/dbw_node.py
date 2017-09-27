@@ -95,7 +95,7 @@ class DBWNode(object):
             #    self.dbw_enabled, self.current_velocity != None, self.twist_cmd != None
             # ))
 
-            if (self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None):
+            if self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None:
                 throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
                 rospy.logwarn("Throttle={}, Brake={}, Steer={}, twist_angular_z={}".
                               format(throttle, brake, steer,
@@ -120,7 +120,7 @@ class DBWNode(object):
         rospy.logdebug(msg)
 
     def publish(self, throttle, brake, steer):
-        if (abs(self.last_throttle - throttle) > EPSILON_THROTTLE):
+        if abs(self.last_throttle - throttle) > EPSILON_THROTTLE:
             self.last_throttle = throttle
             tcmd = ThrottleCmd()
             tcmd.enable = True
@@ -131,7 +131,7 @@ class DBWNode(object):
         else:
             rospy.loginfo("Did no issue throttle command, value={}, last value={}".format(throttle, self.last_throttle))
 
-        if (abs(self.last_steer - steer) > EPSILON_STEER):
+        if abs(self.last_steer - steer) > EPSILON_STEER:
             self.last_steer = steer
             scmd = SteeringCmd()
             scmd.enable = True
@@ -142,7 +142,7 @@ class DBWNode(object):
             rospy.loginfo(
                 "Did no issue steer command, value={}, last value={}".format(steer, self.last_steer))
 
-        if (abs(self.last_brake - brake) > EPSILON_BRAKE):
+        if abs(self.last_brake - brake) > EPSILON_BRAKE:
             self.last_brake = brake
             bcmd = BrakeCmd()
             bcmd.enable = True

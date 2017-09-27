@@ -11,6 +11,7 @@ import numpy as np
 import rospkg
 import math
 
+
 class TLPublisher(object):
     def __init__(self):
         rospy.init_node('tl_publisher')
@@ -53,7 +54,7 @@ class TLPublisher(object):
         pose.pose.position.y = y
         pose.pose.position.z = z
 
-        q = tf.transformations.quaternion_from_euler(0., 0., math.pi * yaw/180.)
+        q = tf.transformations.quaternion_from_euler(0., 0., math.pi * yaw / 180.)
         pose.pose.orientation = Quaternion(*q)
 
         return pose

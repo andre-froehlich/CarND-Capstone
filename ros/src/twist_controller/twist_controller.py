@@ -11,7 +11,10 @@ ONE_MPH = 0.44704
 class Controller(object):
     def __init__(self, vehicle_mass, fuel_capacity, brake_deadband, decel_limit, accel_limit, wheel_radius,
                  wheel_base, steer_ratio, max_lat_accel, max_steer_angle, kp, ki, kd):
-        rospy.logwarn("wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio, max_lat_accel, max_steer_angle))
+        rospy.logwarn(
+            "wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio,
+                                                                                               max_lat_accel,
+                                                                                               max_steer_angle))
 
         # PID controller used for velocity control
         # using kp, ki, kd from params file
@@ -32,7 +35,7 @@ class Controller(object):
 
         # Calculate steering
         twist_linear_x = twist_cmd.twist.linear.x
-        #twist_angular_z = self.low_pass_filter.filt(twist_cmd.twist.angular.z)
+        # twist_angular_z = self.low_pass_filter.filt(twist_cmd.twist.angular.z)
         twist_angular_z = twist_cmd.twist.angular.z
         current_velocity_x = velocity_cmd.twist.linear.x
 

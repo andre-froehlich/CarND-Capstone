@@ -13,6 +13,7 @@ import yaml
 
 STATE_COUNT_THRESHOLD = 3
 
+
 class TLDetector(object):
     def __init__(self):
         rospy.init_node('tl_detector')
@@ -100,9 +101,8 @@ class TLDetector(object):
             int: index of the closest waypoint in self.waypoints
 
         """
-        #TODO implement
+        # TODO implement
         return 0
-
 
     def project_to_image_plane(self, point_in_world):
         """Project point from 3D world coordinates to 2D camera image location
@@ -126,14 +126,14 @@ class TLDetector(object):
         try:
             now = rospy.Time.now()
             self.listener.waitForTransform("/base_link",
-                  "/world", now, rospy.Duration(1.0))
+                                           "/world", now, rospy.Duration(1.0))
             (trans, rot) = self.listener.lookupTransform("/base_link",
-                  "/world", now)
+                                                         "/world", now)
 
         except (tf.Exception, tf.LookupException, tf.ConnectivityException):
             rospy.logerr("Failed to find camera to map transform")
 
-        #TODO Use tranform and rotation to calculate 2D position of light in image
+        # TODO Use tranform and rotation to calculate 2D position of light in image
 
         x = 0
         y = 0
@@ -150,7 +150,7 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        if(not self.has_image):
+        if (not self.has_image):
             self.prev_light_loc = None
             return False
 
@@ -158,9 +158,9 @@ class TLDetector(object):
 
         x, y = self.project_to_image_plane(light.pose.pose.position)
 
-        #TODO use light location to zoom in on traffic light in image
+        # TODO use light location to zoom in on traffic light in image
 
-        #Get classification
+        # Get classification
         return self.light_classifier.get_classification(cv_image)
 
     def process_traffic_lights(self):
@@ -174,16 +174,17 @@ class TLDetector(object):
         """
         light = None
         light_positions = self.config['light_positions']
-        if(self.pose):
+        if (self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
 
-        #TODO find the closest visible traffic light (if one exists)
+        # TODO find the closest visible traffic light (if one exists)
 
         if light:
             state = self.get_light_state(light)
             return light_wp, state
         self.waypoints = None
         return -1, TrafficLight.UNKNOWN
+
 
 if __name__ == '__main__':
     try:

@@ -1,4 +1,3 @@
-
 import rospy
 
 import tf
@@ -31,7 +30,7 @@ TYPE = {
     'steer_cmd': SteeringCmd,
     'brake_cmd': BrakeCmd,
     'throttle_cmd': ThrottleCmd,
-    'image':Image
+    'image': Image
 }
 
 
@@ -79,7 +78,7 @@ class Bridge(object):
         pose.pose.position.y = y
         pose.pose.position.z = z
 
-        q = tf.transformations.quaternion_from_euler(0., 0., math.pi * yaw/180.)
+        q = tf.transformations.quaternion_from_euler(0., 0., math.pi * yaw / 180.)
         pose.pose.orientation = Quaternion(*q)
 
         return pose
@@ -97,7 +96,7 @@ class Bridge(object):
 
     def create_steer(self, val):
         st = SteeringReport()
-        st.steering_wheel_angle_cmd = val * math.pi/180.
+        st.steering_wheel_angle_cmd = val * math.pi / 180.
         st.enabled = True
         st.speed = self.vel
         return st
@@ -105,7 +104,7 @@ class Bridge(object):
     def calc_angular(self, yaw):
         angular_vel = 0.
         if self.yaw is not None:
-            angular_vel = (yaw - self.yaw)/(rospy.get_time() - self.prev_time)
+            angular_vel = (yaw - self.yaw) / (rospy.get_time() - self.prev_time)
         self.yaw = yaw
         self.prev_time = rospy.get_time()
         return angular_vel
@@ -120,23 +119,22 @@ class Bridge(object):
     def broadcast_transform(self, name, position, orientation):
         br = tf.TransformBroadcaster()
         br.sendTransform(position,
-            orientation,
-            rospy.Time.now(),
-            name,
-            "world")
+                         orientation,
+                         rospy.Time.now(),
+                         name,
+                         "world")
 
     def publish_odometry(self, data):
         pose = self.create_pose(data['x'], data['y'], data['z'], data['yaw'])
 
         position = (data['x'], data['y'], data['z'])
-        orientation = tf.transformations.quaternion_from_euler(0, 0, math.pi * data['yaw']/180.)
+        orientation = tf.transformations.quaternion_from_euler(0, 0, math.pi * data['yaw'] / 180.)
         self.broadcast_transform("base_link", position, orientation)
 
         self.publishers['current_pose'].publish(pose)
-        self.vel = data['velocity']* 0.44704
-        self.angular = self.calc_angular(data['yaw'] * math.pi/180.)
+        self.vel = data['velocity'] * 0.44704
+        self.angular = self.calc_angular(data['yaw'] * math.pi / 180.)
         self.publishers['current_velocity'].publish(self.create_twist(self.vel, self.angular))
-
 
     def publish_controls(self, data):
         steering, throttle, brake = data['steering_angle'], data['throttle'], data['brake']
@@ -155,7 +153,8 @@ class Bridge(object):
         self.publishers['obstacle_points'].publish(cloud)
 
     def publish_lidar(self, data):
-        self.publishers['lidar'].publish(self.create_point_cloud_message(zip(data['lidar_x'], data['lidar_y'], data['lidar_z'])))
+        self.publishers['lidar'].publish(
+            self.create_point_cloud_message(zip(data['lidar_x'], data['lidar_y'], data['lidar_z'])))
 
     def publish_traffic(self, data):
         x, y, z = data['light_pos_x'], data['light_pos_y'], data['light_pos_z'],

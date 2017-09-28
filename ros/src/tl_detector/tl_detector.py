@@ -138,7 +138,7 @@ class TLDetector(object):
         x = 0
         y = 0
 
-        return x, y
+        return (x, y)
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -150,7 +150,7 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        if not self.has_image:
+        if (not self.has_image):
             self.prev_light_loc = None
             return False
 
@@ -174,7 +174,7 @@ class TLDetector(object):
         """
         light = None
         light_positions = self.config['light_positions']
-        if self.pose:
+        if (self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
 
         # TODO find the closest visible traffic light (if one exists)

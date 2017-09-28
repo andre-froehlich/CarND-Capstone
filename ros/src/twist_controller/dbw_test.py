@@ -7,6 +7,7 @@ import rospy
 from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 
+
 '''
 You can use this file to test your DBW code against a bag recorded with a reference implementation.
 The bag can be found in `styx/data` folder.
@@ -49,7 +50,7 @@ class DBWTestNode(object):
         self.loop()
 
     def loop(self):
-        rate = rospy.Rate(10)  # 10Hz
+        rate = rospy.Rate(10) # 10Hz
         while not rospy.is_shutdown():
             rate.sleep()
         fieldnames = ['actual', 'proposed']

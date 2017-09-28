@@ -16,6 +16,7 @@ MAX_DECEL = 1.0
 
 
 class WaypointLoader(object):
+
     def __init__(self):
         rospy.init_node('waypoint_loader', log_level=rospy.DEBUG)
 
@@ -37,7 +38,7 @@ class WaypointLoader(object):
         return tf.transformations.quaternion_from_euler(0., 0., yaw)
 
     def get_velocity(self, velocity):
-        return velocity / 3.6
+        return velocity/3.6
 
     def load_waypoints(self, fname):
         waypoints = []
@@ -50,14 +51,14 @@ class WaypointLoader(object):
                 p.pose.pose.position.z = float(wp['z'])
                 q = self.quaternion_from_yaw(float(wp['yaw']))
                 p.pose.pose.orientation = Quaternion(*q)
-                p.twist.twist.linear.x = float(self.velocity * 0.27778)
+                p.twist.twist.linear.x = float(self.velocity*0.27778)
 
                 waypoints.append(p)
         return self.decelerate(waypoints)
 
     def distance(self, p1, p2):
         x, y, z = p1.x - p2.x, p1.y - p2.y, p1.z - p2.z
-        return math.sqrt(x * x + y * y + z * z)
+        return math.sqrt(x*x + y*y + z*z)
 
     def decelerate(self, waypoints):
         last = waypoints[-1]

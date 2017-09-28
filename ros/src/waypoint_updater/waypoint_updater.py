@@ -22,7 +22,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
 
 
 class WaypointUpdater(object):
@@ -42,7 +42,7 @@ class WaypointUpdater(object):
         self.len_waypoints = None
 
         self.loop()
-        # rospy.spin()
+        #rospy.spin()
 
     def loop(self):
         rate = rospy.Rate(10)  # 10Hz
@@ -89,6 +89,7 @@ class WaypointUpdater(object):
 
             rate.sleep()
 
+
     def check_is_behind(self, index):
         dx = self.base_waypoints.waypoints[index].pose.pose.position.x - self.pose.position.x
         dy = self.base_waypoints.waypoints[index].pose.pose.position.y - self.pose.position.y
@@ -118,7 +119,7 @@ class WaypointUpdater(object):
     def squared_dist(self, index):
         dx = self.pose.position.x - self.base_waypoints.waypoints[index].pose.pose.position.x
         dy = self.pose.position.y - self.base_waypoints.waypoints[index].pose.pose.position.y
-        return dx ** 2 + dy ** 2
+        return dx**2 + dy**2
 
     def pose_cb(self, msg):
         # TODO: Implement
@@ -150,8 +151,8 @@ class WaypointUpdater(object):
 
     def distance(self, waypoints, wp1, wp2):
         dist = 0
-        dl = lambda a, b: math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
-        for i in range(wp1, wp2 + 1):
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        for i in range(wp1, wp2+1):
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
             wp1 = i
         return dist

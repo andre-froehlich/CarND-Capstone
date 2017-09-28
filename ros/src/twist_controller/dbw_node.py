@@ -33,7 +33,6 @@ EPSILON_THROTTLE = 0.05
 EPSILON_BRAKE = 0.05
 EPSILON_STEER = 0.05
 
-
 class DBWNode(object):
     def __init__(self):
         rospy.init_node('dbw_node')
@@ -46,7 +45,7 @@ class DBWNode(object):
         wheel_radius = rospy.get_param('~wheel_radius', 0.2413)
         wheel_base = rospy.get_param('~wheel_base', 2.8498)
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
-        # steer_ratio = rospy.get_param('~steer_ratio', 118.4)
+        #steer_ratio = rospy.get_param('~steer_ratio', 118.4)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
         kp = rospy.get_param('~kp', .0)
@@ -80,7 +79,7 @@ class DBWNode(object):
         self.loop()
 
     def loop(self):
-        rate = rospy.Rate(50)  # 50Hz
+        rate = rospy.Rate(50) # 50Hz
         # rate = rospy.Rate(10)  # 10Hz
         while not rospy.is_shutdown():
             # TODO: Get predicted throttle, brake, and steering using `twist_controller`
@@ -91,9 +90,9 @@ class DBWNode(object):
             #                                                     <dbw status>,
             #                                                     <any other argument you need>)
 
-            # rospy.logwarn("dwb_enabled={}, current_velocity={}, twist_cmd={}".format(
+            #rospy.logwarn("dwb_enabled={}, current_velocity={}, twist_cmd={}".format(
             #    self.dbw_enabled, self.current_velocity != None, self.twist_cmd != None
-            # ))
+            #))
 
             if (self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None):
                 throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
@@ -153,7 +152,6 @@ class DBWNode(object):
         else:
             rospy.loginfo(
                 "Did no issue brake command, value={}, last value={}".format(brake, self.last_brake))
-
 
 if __name__ == '__main__':
     DBWNode()

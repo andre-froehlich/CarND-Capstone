@@ -20,6 +20,7 @@ class WaypointLoader(object):
     def __init__(self):
         rospy.init_node('waypoint_loader', log_level=rospy.DEBUG)
 
+        # latch=True publishes to new nodes as soon as they subscribe to this topic
         self.pub = rospy.Publisher('/base_waypoints', Lane, queue_size=1, latch=True)
 
         self.velocity = rospy.get_param('~velocity')
@@ -72,6 +73,7 @@ class WaypointLoader(object):
         return waypoints
 
     def publish(self, waypoints):
+        # no more while-loop -> gets published only once
         lane = Lane()
         lane.header.frame_id = '/world'
         lane.header.stamp = rospy.Time(0)

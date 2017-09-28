@@ -53,6 +53,8 @@ class WaypointUpdater(object):
 
                 for i in range(0, self.len_waypoints):
                     curr_dist = self.squared_dist(i)
+                    if i >= 10985:
+                        rospy.loginfo("wp#{}\tclosest_dist={}\tclosest_idx={}\tcurr_dist={}\n".format(i, closest_dist, closest_index, curr_dist))
                     if (curr_dist < closest_dist):
                         closest_dist = curr_dist
                         closest_index = i

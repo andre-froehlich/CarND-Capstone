@@ -17,6 +17,7 @@ BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
+MAGENTA = (255, 0, 255)
 
 TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN}
 
@@ -33,7 +34,7 @@ class Dashboard(object):
 
     _current_pose = None
     _base_waypoints = None
-    _len_waypoints = -1
+    _final_waypoints = None
     _dbw_enabled = False
     _current_velocity = None
     _twist_cmd = None
@@ -58,6 +59,7 @@ class Dashboard(object):
         # subscribe to pose and waypoints
         rospy.Subscriber('/current_pose', PoseStamped, self._set_current_pose)
         rospy.Subscriber('/base_waypoints', Lane, self._set_base_waypoints)
+        rospy.Subscriber('/final_waypoints', Lane, self._set_final_waypoints)
 
         # subscribe to traffic light and obstacle topics
         rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self._set_traffic_lights)
@@ -101,7 +103,7 @@ class Dashboard(object):
         # transform base waypoints to vertices for cv2.polylines
         xs = list()
         ys = list()
-        for wp in self._base_waypoints.waypoints:
+        for wp in self._base_waypoints:
             xs.append(wp.pose.pose.position.x)
             #  normalize y values
             ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
@@ -114,14 +116,14 @@ class Dashboard(object):
         cv2.polylines(self._track_image, vertices, True, WHITE, 5)
 
         # draw initial car position
-        self._current_pose = self._base_waypoints.waypoints[-1].pose.pose
+        self._current_pose = self._base_waypoints[-1].pose.pose
         self._draw_current_position()
 
     def _draw_current_position(self):
         if self._current_pose is not None:
             x = int(self._current_pose.position.x)
             y = int(self._screen_dimensions[1] - (self._current_pose.position.y - 1000.))
-            cv2.circle(self._dashboard_img, (x, y), 10, BLUE, -1)
+            cv2.circle(self._dashboard_img, (x, y), 10, MAGENTA, -1)
 
     def _draw_traffic_lights(self):
         if self._traffic_lights_per_state is not None:
@@ -144,6 +146,18 @@ class Dashboard(object):
         cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius // 2 + 50), baseline + (size[1] // 2)),
                    radius, state, -1)
 
+    def _draw_final_waypoints(self):
+        if self._final_waypoints is not None and self._dashboard_img is not None:
+            xs = list()
+            ys = list()
+            for wp in self._final_waypoints:
+                xs.append(wp.pose.pose.position.x)
+                #  normalize y values
+                ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
+            vertices = [np.column_stack((xs, ys)).astype(np.int32)]
+            # draw polylines of the track
+            cv2.polylines(self._dashboard_img, vertices, False, GREEN, 8)
+
     def _loop(self):
         # 1Hz should be enough
         rate = rospy.Rate(1)
@@ -153,12 +167,16 @@ class Dashboard(object):
                 self._dashboard_img = np.copy(self._track_image)
 
                 self._draw_current_position()
+
                 self._draw_traffic_lights()
+
                 self._draw_dbw_status()
 
+                self._draw_final_waypoints()
+
                 # test text
-                header = "Dashboard"
-                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, GREY, 3)
+                header = "Happy Robots"
+                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, GREY, 4)
                 cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, WHITE, 2)
 
                 # update screen with new image and refresh window
@@ -179,14 +197,17 @@ class Dashboard(object):
         rospy.loginfo(
             "Received new position: x={}, y={}".format(self._current_pose.position.x, self._current_pose.position.y))
 
-    def _set_base_waypoints(self, waypoints):
+    def _set_base_waypoints(self, lane):
         if self._base_waypoints is None:
-            self._base_waypoints = waypoints
-            self._len_waypoints = len(self._base_waypoints.waypoints)
-            rospy.logwarn("Waypoints loaded... found {}.".format(self._len_waypoints))
+            self._base_waypoints = lane.waypoints
+            rospy.logwarn("Waypoints loaded... found {}.".format(len(self._base_waypoints)))
             # draws track image right after setting waypoints
             # this way it only has to be done once
             self._draw_track()
+
+    def _set_final_waypoints(self, lane):
+        self._final_waypoints = lane.waypoints
+        # rospy.logwarn("Final waypoints received! Got: {}".format(len(self._final_waypoints)))
 
     def _set_traffic_waypoints(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement

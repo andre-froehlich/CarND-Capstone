@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+import tf
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
 
@@ -94,35 +95,43 @@ class WaypointUpdater(object):
     def check_is_behind(self, index):
         dx = self.base_waypoints.waypoints[index].pose.pose.position.x - self.pose.position.x
         dy = self.base_waypoints.waypoints[index].pose.pose.position.y - self.pose.position.y
-        wp_angle = None
+        angle = None
 
-        if (dy == 0):
-            if (dx >= 0):
-                wp_angle = 0.5 * math.pi
+        if (dx == 0):
+            if (dy >= 0):
+                angle = 0.5 * math.pi
             else:
-                wp_angle = 1.5 * math.pi
-        elif (dx >= 0.0 and dy > 0.0):
-            wp_angle = math.atan(dx / dy)
-        elif (dx >= 0.0 and dy < 0.0):
-            wp_angle = math.pi - math.atan(-dx / dy)
-        elif (dx < 0.0 and dy < 0.0):
-            wp_angle = math.pi + math.atan(dx / dy)
+                angle = 1.5 * math.pi
+        elif (dx > 0.0 and dy >= 0.0):
+            angle = math.atan(dy / dx)
+        elif (dx > 0.0 and dy <= 0.0):
+            angle = 2 * math.pi - math.atan(-dy / dx)
+        elif (dx < 0.0 and dy <= 0.0):
+            angle = math.pi + math.atan(dy / dx)
         else:
-            wp_angle = 2 * math.pi - math.atan(-dx / dy)
+            angle = math.pi - math.atan(-dy / dx)
 
-        orientation = self.pose.orientation.w
+        quaternion = (self.pose.orientation.x,
+                      self.pose.orientation.y,
+                      self.pose.orientation.z,
+                      self.pose.orientation.w)
+        euler = tf.transformations.euler_from_quaternion(quaternion)
+
+        car_angle = euler[2]
         # Normalize orientation
-        while (orientation < 0):
-            orientation += 2 * math.pi
-        while (orientation > 2 * math.pi):
-            orientation -= 2 * math.pi
-        assert (orientation >= 0 and orientation <= 2 * math.pi)
+        while (car_angle < 0):
+            car_angle += 2 * math.pi
+        while (car_angle > 2 * math.pi):
+            car_angle -= 2 * math.pi
+        assert (car_angle >= 0 and car_angle <= 2 * math.pi)
 
-        delta_angle = abs(wp_angle - orientation)
+        delta_angle = abs(angle - car_angle)
         if (delta_angle >= 0.5 * math.pi and delta_angle <= 1.5 * math.pi):
             return True
         else:
             return False
+
+
 
     def squared_dist(self, index):
         dx = self.pose.position.x - self.base_waypoints.waypoints[index].pose.pose.position.x

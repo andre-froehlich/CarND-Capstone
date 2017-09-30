@@ -132,8 +132,17 @@ class Dashboard(object):
                     y = int(self._screen_dimensions[1] - (tl[1] - 1000.))
                     cv2.circle(self._dashboard_img, (x, y), 15, color, -1)
 
-    def _dbw_status(self):
-        pass
+    def _draw_dbw_status(self):
+        state = RED
+        if self._dbw_enabled:
+            state = GREEN
+        text = "DBW"
+        size, baseline = self._get_text_size(text)
+        radius = 20
+        cv2.putText(self._dashboard_img, text, (self._screen_dimensions[0] - (size[0] + radius + 50), size[1] + 10),
+                    cv2.FONT_HERSHEY_COMPLEX, 2, WHITE, 2)
+        cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius // 2 + 50), baseline + (size[1] // 2)),
+                   radius, state, -1)
 
     def _loop(self):
         # 1Hz should be enough
@@ -145,7 +154,7 @@ class Dashboard(object):
 
                 self._draw_current_position()
                 self._draw_traffic_lights()
-                # self._draw_dbw_status()
+                self._draw_dbw_status()
 
                 # test text
                 header = "Dashboard"
@@ -207,6 +216,9 @@ class Dashboard(object):
             if state_tl not in self._traffic_lights_per_state:
                 self._traffic_lights_per_state[state_tl] = list()
             self._traffic_lights_per_state[state_tl].append((x_tl, y_tl, orientation_tl, stamp_tl))
+
+    def _get_text_size(self, text, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=2, thickness=2):
+        return cv2.getTextSize(text, fontFace, fontScale, thickness)
 
 
 if __name__ == '__main__':

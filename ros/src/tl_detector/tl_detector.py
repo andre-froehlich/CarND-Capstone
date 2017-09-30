@@ -10,6 +10,7 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+import math
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -80,18 +81,16 @@ class TLDetector(object):
         if self.pose == None:
             return
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+
+        next_trafficlight_index = self.get_next(self.pose, self.lights)
+        next_traffic_light = self.lights[next_trafficlight_index]
+
         cv2.imwrite("../../../training_data/data{:06d}.png".format(self.training_data_counter), cv_image)
-        self.state_file.write("{}".format(0))
-        #self.state_file.write("Current POSE: {}\nEND POSE\n".format(self.pose))
-        #self.state_file.write("LIGHTS: {}\nEND LIGHTS\n".format(self.lights))
-        rospy.logerr("Curr POSE:")
-        rospy.logerr(self.pose)
-        rospy.logerr("\n")
-        rospy.logerr("LIGHTS:")
-        rospy.logerr(self.lights)
+        self.state_file.write("{},{},{}\n".format(self.training_data_counter, next_trafficlight_index,
+                                                  next_traffic_light.state))
+        self.state_file.flush()
 
         self.training_data_counter += 1
-        self.collect_training_data = False
 
     def image_cb(self, msg):
         """Identifies red lights in the incoming camera image and publishes the index
@@ -153,23 +152,54 @@ class TLDetector(object):
 
         for i in range(0, len(pose_list)):
             # Check if pose in list in in front of the vehicle
-            if self.check_is_ahead(base_pose, pose_list[i]):
+            if self.check_is_ahead(base_pose, pose_list[i].pose):
 
                 # Calculate the distance between pose und pose in list
-                dist = self.squared_dist(base_pose, pose_list[i])
+                dist = self.squared_dist(base_pose, pose_list[i].pose)
                 # If distance is smaller than last saved distance
                 if dist < closest_dist:
                     # Save
                     closest_dist = dist
                     closest_index = i
+        return closest_index
 
     def check_is_ahead(self, pose_1, pose_2):
-        # TODO: Use vehicle orientation to identify which points are ahead
-        return True
+        dx = pose_2.pose.position.x - pose_1.pose.position.x
+        dy = pose_2.pose.position.y - pose_1.pose.position.y
+        angle = None
+
+        if (dy == 0):
+            if (dx >= 0):
+                angle = 0.5 * math.pi
+            else:
+                angle = 1.5 * math.pi
+        elif (dx >= 0.0 and dy > 0.0):
+            angle = math.atan(dx / dy)
+        elif (dx >= 0.0 and dy < 0.0):
+            angle = math.pi - math.atan(-dx / dy)
+        elif (dx < 0.0 and dy < 0.0):
+            angle = math.pi + math.atan(dx / dy)
+        else:
+            angle = 2 * math.pi - math.atan(-dx / dy)
+
+        orientation = pose_1.pose.orientation.w
+        # Normalize orientation
+        while (orientation < 0):
+            orientation += 2 * math.pi
+        while (orientation > 2 * math.pi):
+            orientation -= 2 * math.pi
+
+        assert (orientation >= 0 and orientation <= 2 * math.pi)
+
+        delta_angle = abs(angle - orientation)
+        if (delta_angle >= 0.5 * math.pi and delta_angle <= 1.5 * math.pi):
+            return False
+        else:
+            return True
 
     def squared_dist(self, pose_1, pose_2):
-        dx = pose_1.position.x - pose_2.position.x
-        dy = pose_1.position.y - pose_2.position.y
+        dx = pose_1.pose.position.x - pose_2.pose.position.x
+        dy = pose_1.pose.position.y - pose_2.pose.position.y
         return dx*dx + dy*dy
 
     def project_to_image_plane(self, point_in_world):

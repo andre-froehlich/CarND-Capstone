@@ -96,7 +96,7 @@ class DBWNode(object):
 
             if (self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None):
                 throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
-                rospy.logwarn("Throttle={}, Brake={}, Steer={}, twist_angular_z={}".
+                rospy.loginfo("Throttle={}, Brake={}, Steer={}, twist_angular_z={}".
                               format(throttle, brake, steer,
                                      self.twist_cmd.twist.angular.z))
                 self.publish(throttle, brake, steer)

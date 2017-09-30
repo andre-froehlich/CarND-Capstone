@@ -107,9 +107,20 @@ class Dashboard(object):
         cv2.polylines(self._track_image, vertices, False, WHITE, 5)
 
         # draw initial car position
-        x = int(self._base_waypoints.waypoints[-1].pose.pose.position.x)
-        y = int(self._screen_dimensions[1] - (self._base_waypoints.waypoints[-1].pose.pose.position.y - 1000.))
-        cv2.circle(self._track_image, (x, y), 10, RED, -1)
+        self._current_pose = self._base_waypoints.waypoints[-1].pose.pose
+        self._draw_current_position()
+
+    def _draw_current_position(self):
+        if self._current_pose is not None:
+            x = int(self._current_pose.position.x)
+            y = int(self._screen_dimensions[1] - (self._current_pose.position.y - 1000.))
+            cv2.circle(self._dashboard_img, (x, y), 10, RED, -1)
+
+    def _draw_traffic_lights(self):
+        # if self._traffic_lights is not None:
+        # TODO: implement
+
+        pass
 
     def _loop(self):
         # 1Hz should be enough
@@ -118,6 +129,8 @@ class Dashboard(object):
             if self._base_waypoints is not None:
                 # get copy of track_image
                 self._dashboard_img = np.copy(self._track_image)
+
+                self._draw_current_position()
 
                 # test text
                 header = "Dashboard"

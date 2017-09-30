@@ -53,7 +53,8 @@ class TLDetector(object):
 
         self.collect_training_data = True
         self.training_data_counter = 0
-        self.state_file = open("../../../training_data/state.txt","w")
+        if self.collect_training_data:
+            self.state_file = open("../../../training_data/state.txt","w")
 
         rospy.spin()
 
@@ -84,7 +85,8 @@ class TLDetector(object):
 
         index, dist = self.get_next(self.pose, self.lights)
         traffic_light = self.lights[index]
-        if (dist > 20.0 and dist < 220):
+        # Through out cases where traffic light is only partially visible?
+        if (dist > 21.0 and dist < 220.0):
             state = traffic_light.state
         else:
             state = 4
@@ -205,8 +207,6 @@ class TLDetector(object):
             car_angle -= 2 * math.pi
 
         assert (car_angle >= 0 and car_angle <= 2 * math.pi)
-
-        #rospy.logwarn("{}: orientation={}, angle={}".format(self.training_data_counter, car_angle, angle))
 
         delta_angle = abs(angle - car_angle)
         if (delta_angle >= 0.5 * math.pi and delta_angle <= 1.5 * math.pi):

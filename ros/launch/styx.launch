@@ -15,6 +15,9 @@
     <!--Waypoint Updater Node -->
     <include file="$(find waypoint_updater)/launch/waypoint_updater.launch"/>
 
+    <!-- visualize track and other information -->
+    <include file="$(find dashboard)/launch/dashboard.launch"/>
+
     <!--Traffic Light Detector Node -->
     <include file="$(find tl_detector)/launch/tl_detector.launch"/>
 

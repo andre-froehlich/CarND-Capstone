@@ -118,7 +118,7 @@ class WaypointUpdater(object):
         euler = tf.transformations.euler_from_quaternion(quaternion)
 
         car_angle = euler[2]
-        # Normalize orientation
+        # Normalize orientation_
         while (car_angle < 0):
             car_angle += 2 * math.pi
         while (car_angle > 2 * math.pi):

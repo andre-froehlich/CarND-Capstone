@@ -1,22 +1,24 @@
 #!/usr/bin/env python
 
-import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
 import cv2
 import numpy as np
 import pygame
 import rospy
 from ast import literal_eval as make_tuple
 from geometry_msgs.msg import PoseStamped, TwistStamped
-from styx_msgs.msg import Lane, Waypoint
+from styx_msgs.msg import Lane, Waypoint, TrafficLightArray, TrafficLight
 from std_msgs.msg import Bool
 
 # couple of colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+GREY = (128, 128, 128)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+
+TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN}
 
 
 class Dashboard(object):
@@ -35,6 +37,9 @@ class Dashboard(object):
     _dbw_enabled = False
     _current_velocity = None
     _twist_cmd = None
+
+    # traffic lights per state
+    _traffic_lights_per_state = dict()
 
     # shows the track in white on black background
     _track_image = None
@@ -55,6 +60,7 @@ class Dashboard(object):
         rospy.Subscriber('/base_waypoints', Lane, self._set_base_waypoints)
 
         # subscribe to traffic light and obstacle topics
+        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self._set_traffic_lights)
         # rospy.Subscriber('/traffic_waypoint', Lane, self._set_traffic_waypoints)
         # rospy.Subscriber('/obstacle_waypoint', Lane, self._set_obstacle_waypoints)
 
@@ -62,8 +68,8 @@ class Dashboard(object):
         rospy.Subscriber('/dbw_enabled', Bool, self._set_dbw_enabled)
 
         # current velocity and twist topic
-        rospy.Subscriber('/current_velocity', TwistStamped, self._set_current_velocity)
-        rospy.Subscriber('/twist_cmd', TwistStamped, self._set_twist_cmd)
+        # rospy.Subscriber('/current_velocity', TwistStamped, self._set_current_velocity)
+        # rospy.Subscriber('/twist_cmd', TwistStamped, self._set_twist_cmd)
 
         # initialize screen with given parameters from dashboard.launch
         self._init_screen()
@@ -102,9 +108,10 @@ class Dashboard(object):
         vertices = [np.column_stack((xs, ys)).astype(np.int32)]
 
         # create empty image with screen dimensions
-        self._track_image = np.zeros((self._screen_dimensions[0], self._screen_dimensions[1], 3), dtype=np.uint8)
+        self._track_image = np.empty((self._screen_dimensions[0], self._screen_dimensions[1], 3), dtype=np.uint8)
         # draw polylines of the track
-        cv2.polylines(self._track_image, vertices, False, WHITE, 5)
+        cv2.polylines(self._track_image, vertices, True, GREY, 8)
+        cv2.polylines(self._track_image, vertices, True, WHITE, 5)
 
         # draw initial car position
         self._current_pose = self._base_waypoints.waypoints[-1].pose.pose
@@ -114,12 +121,18 @@ class Dashboard(object):
         if self._current_pose is not None:
             x = int(self._current_pose.position.x)
             y = int(self._screen_dimensions[1] - (self._current_pose.position.y - 1000.))
-            cv2.circle(self._dashboard_img, (x, y), 10, RED, -1)
+            cv2.circle(self._dashboard_img, (x, y), 10, BLUE, -1)
 
     def _draw_traffic_lights(self):
-        # if self._traffic_lights is not None:
-        # TODO: implement
+        if self._traffic_lights_per_state is not None:
+            for key, val in self._traffic_lights_per_state.iteritems():
+                color = TRAFFIC_STATES[key]
+                for tl in val:
+                    x = int(tl[0])
+                    y = int(self._screen_dimensions[1] - (tl[1] - 1000.))
+                    cv2.circle(self._dashboard_img, (x, y), 15, color, -1)
 
+    def _dbw_status(self):
         pass
 
     def _loop(self):
@@ -131,9 +144,12 @@ class Dashboard(object):
                 self._dashboard_img = np.copy(self._track_image)
 
                 self._draw_current_position()
+                self._draw_traffic_lights()
+                # self._draw_dbw_status()
 
                 # test text
                 header = "Dashboard"
+                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, GREY, 3)
                 cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, WHITE, 2)
 
                 # update screen with new image and refresh window
@@ -179,6 +195,18 @@ class Dashboard(object):
 
     def _set_twist_cmd(self, msg):
         self._twist_cmd = msg
+
+    def _set_traffic_lights(self, msg):
+        self._traffic_lights_per_state.clear()
+        for tl in msg.lights:
+            x_tl = tl.pose.pose.position.x
+            y_tl = tl.pose.pose.position.y
+            orientation_tl = tl.pose.pose.orientation
+            stamp_tl = tl.pose.header.stamp
+            state_tl = tl.state
+            if state_tl not in self._traffic_lights_per_state:
+                self._traffic_lights_per_state[state_tl] = list()
+            self._traffic_lights_per_state[state_tl].append((x_tl, y_tl, orientation_tl, stamp_tl))
 
 
 if __name__ == '__main__':

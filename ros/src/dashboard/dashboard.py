@@ -50,9 +50,8 @@ class Dashboard(object):
     def __init__(self):
         rospy.init_node('dashboard_node')
 
-        # read window dimensions and background color from dashboard.launch
-        self._window_dimensions = make_tuple(rospy.get_param('~window_dimensions', (300, 200)))
-        self._background_color = make_tuple(rospy.get_param('~background_color', BLACK))
+        self._read_params()
+
         # calculate screen dimensions from window dimensions
         self._screen_dimensions = (self._window_dimensions[0] * 3, self._window_dimensions[1] * 3)
 
@@ -78,6 +77,16 @@ class Dashboard(object):
 
         # start loop
         self._loop()
+
+    def _read_params(self):
+        # read window dimensions and background color from dashboard.launch
+        self._window_dimensions = make_tuple(rospy.get_param('~window_dimensions', (300, 200)))
+        self._background_color = make_tuple(rospy.get_param('~background_color', str(BLACK)))
+        self._text_color = make_tuple(rospy.get_param('~text_color', str(WHITE)))
+        self._text_shadow_color = make_tuple(rospy.get_param('~text_shadow_color', str(GREY)))
+        self._ego_color = make_tuple(rospy.get_param('~ego_color', str(MAGENTA)))
+        self._final_waypoints_color = make_tuple(rospy.get_param('~final_waypoints_color', str(GREEN)))
+        self._base_waypoints_color = make_tuple(rospy.get_param('~base_waypoints_color', str(WHITE)))
 
     def _init_screen(self):
         # produces error msgs and works without
@@ -112,8 +121,7 @@ class Dashboard(object):
         # create empty image with screen dimensions
         self._track_image = np.empty((self._screen_dimensions[0], self._screen_dimensions[1], 3), dtype=np.uint8)
         # draw polylines of the track
-        cv2.polylines(self._track_image, vertices, True, GREY, 8)
-        cv2.polylines(self._track_image, vertices, True, WHITE, 5)
+        cv2.polylines(self._track_image, vertices, True, self._base_waypoints_color, 5)
 
         # draw initial car position
         self._current_pose = self._base_waypoints[-1].pose.pose
@@ -123,7 +131,7 @@ class Dashboard(object):
         if self._current_pose is not None:
             x = int(self._current_pose.position.x)
             y = int(self._screen_dimensions[1] - (self._current_pose.position.y - 1000.))
-            cv2.circle(self._dashboard_img, (x, y), 10, MAGENTA, -1)
+            cv2.circle(self._dashboard_img, (x, y), 10, self._ego_color, -1)
 
     def _draw_traffic_lights(self):
         if self._traffic_lights_per_state is not None:
@@ -142,7 +150,7 @@ class Dashboard(object):
         size, baseline = self._get_text_size(text)
         radius = 20
         cv2.putText(self._dashboard_img, text, (self._screen_dimensions[0] - (size[0] + radius + 50), size[1] + 10),
-                    cv2.FONT_HERSHEY_COMPLEX, 2, WHITE, 2)
+                    cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
         cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius // 2 + 50), baseline + (size[1] // 2)),
                    radius, state, -1)
 
@@ -156,7 +164,7 @@ class Dashboard(object):
                 ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
             vertices = [np.column_stack((xs, ys)).astype(np.int32)]
             # draw polylines of the track
-            cv2.polylines(self._dashboard_img, vertices, False, GREEN, 8)
+            cv2.polylines(self._dashboard_img, vertices, False, self._final_waypoints_color, 8)
 
     def _loop(self):
         # 1Hz should be enough
@@ -176,8 +184,8 @@ class Dashboard(object):
 
                 # test text
                 header = "Happy Robots"
-                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, GREY, 4)
-                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, WHITE, 2)
+                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
+                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
 
                 # update screen with new image and refresh window
                 self._update_screen()

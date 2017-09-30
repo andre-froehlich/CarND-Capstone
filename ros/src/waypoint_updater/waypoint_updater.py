@@ -4,7 +4,7 @@ import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
 
-import sys
+# import sys
 import math
 
 '''
@@ -110,8 +110,15 @@ class WaypointUpdater(object):
         else:
             wp_angle = 2 * math.pi - math.atan(-dx / dy)
 
-        # Normalize car's angle?
-        delta_angle = abs(wp_angle - self.pose.orientation.w)
+        orientation = self.pose.orientation.w
+        # Normalize orientation
+        while (orientation < 0):
+            orientation += 2 * math.pi
+        while (orientation > 2 * math.pi):
+            orientation -= 2 * math.pi
+        assert (orientation >= 0 and orientation <= 2 * math.pi)
+
+        delta_angle = abs(wp_angle - orientation)
         if (delta_angle >= 0.5 * math.pi and delta_angle <= 1.5 * math.pi):
             return True
         else:

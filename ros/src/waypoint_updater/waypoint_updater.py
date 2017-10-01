@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
 import rospy
-import tf
-import math
 from geometry_msgs.msg import PoseStamped
-from styx_msgs.msg import Lane, Waypoint
+from styx_msgs.msg import Lane
 from utilities import utils
 
 '''
@@ -34,7 +32,6 @@ class WaypointUpdater(object):
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
-
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
@@ -48,15 +45,14 @@ class WaypointUpdater(object):
     def loop(self):
         rate = rospy.Rate(10)  # 10Hz
         while not rospy.is_shutdown():
-            if (self.base_waypoints != None and self.pose != None):
+            if self.base_waypoints is not None and self.pose is not None:
                 closest_index, _ = utils.get_next(self.pose, self.base_waypoints.waypoints)
-                rospy.loginfo("Closed Waypoint index is: {}, x={}, y={}".
-                              format(closest_index,
-                                     self.base_waypoints.waypoints[closest_index].pose.pose.position.x,
-                                     self.base_waypoints.waypoints[closest_index].pose.pose.position.y))
+                rospy.loginfo("Closed Waypoint index is: {}, x={}, y={}"
+                              .format(closest_index, self.base_waypoints.waypoints[closest_index].pose.pose.position.x,
+                                      self.base_waypoints.waypoints[closest_index].pose.pose.position.y))
 
                 final_waypoints = None
-                if (closest_index < self.len_waypoints - LOOKAHEAD_WPS):
+                if closest_index < self.len_waypoints - LOOKAHEAD_WPS:
                     final_waypoints = self.base_waypoints.waypoints[closest_index:closest_index + LOOKAHEAD_WPS]
                 else:
                     final_waypoints = self.base_waypoints.waypoints[closest_index:]
@@ -80,11 +76,10 @@ class WaypointUpdater(object):
     def pose_cb(self, msg):
         # TODO: Implement
         self.pose = msg
-        rospy.loginfo("Received new position: x={}, y={}".format(self.pose.pose.position.x,
-                                                                 self.pose.pose.position.y))
+        rospy.loginfo("Received new position: x={}, y={}".format(self.pose.pose.position.x, self.pose.pose.position.y))
 
     def waypoints_cb(self, waypoints):
-        if (self.base_waypoints == None):
+        if self.base_waypoints is None:
             self.base_waypoints = waypoints
             self.len_waypoints = len(self.base_waypoints.waypoints)
             rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))
@@ -97,10 +92,12 @@ class WaypointUpdater(object):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
         pass
 
-    def get_waypoint_velocity(self, waypoint):
+    @staticmethod
+    def get_waypoint_velocity(waypoint):
         return waypoint.twist.twist.linear.x
 
-    def set_waypoint_velocity(self, waypoints, waypoint, velocity):
+    @staticmethod
+    def set_waypoint_velocity(waypoints, waypoint, velocity):
         waypoints[waypoint].twist.twist.linear.x = velocity
 
 

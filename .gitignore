@@ -7,3 +7,4 @@ profile.tmp
 .idea
 
 test.py
+.DS_Store

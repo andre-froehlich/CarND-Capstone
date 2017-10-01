@@ -2,11 +2,10 @@
 
 import rospy
 import tf
+import math
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
-
-# import sys
-import math
+from utilities import utils
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -23,7 +22,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 
 
 class WaypointUpdater(object):
@@ -44,26 +43,13 @@ class WaypointUpdater(object):
         self.len_waypoints = None
 
         self.loop()
-        #rospy.spin()
+        # rospy.spin()
 
     def loop(self):
         rate = rospy.Rate(10)  # 10Hz
         while not rospy.is_shutdown():
             if (self.base_waypoints != None and self.pose != None):
-                closest_dist = float("inf")
-                closest_index = 0
-
-                for i in range(0, self.len_waypoints):
-                    curr_dist = self.squared_dist(i)
-                    if (curr_dist < closest_dist):
-                        closest_dist = curr_dist
-                        closest_index = i
-
-                if (self.check_is_behind(closest_index)):
-                    closest_index += 1
-                    if (closest_index == self.len_waypoints):
-                        closest_index = 0
-
+                closest_index, _ = utils.get_next(self.pose, self.base_waypoints.waypoints)
                 rospy.loginfo("Closed Waypoint index is: {}, x={}, y={}".
                               format(closest_index,
                                      self.base_waypoints.waypoints[closest_index].pose.pose.position.x,
@@ -91,58 +77,11 @@ class WaypointUpdater(object):
 
             rate.sleep()
 
-
-    def check_is_behind(self, index):
-        dx = self.base_waypoints.waypoints[index].pose.pose.position.x - self.pose.position.x
-        dy = self.base_waypoints.waypoints[index].pose.pose.position.y - self.pose.position.y
-        angle = None
-
-        if (dx == 0):
-            if (dy >= 0):
-                angle = 0.5 * math.pi
-            else:
-                angle = 1.5 * math.pi
-        elif (dx > 0.0 and dy >= 0.0):
-            angle = math.atan(dy / dx)
-        elif (dx > 0.0 and dy <= 0.0):
-            angle = 2 * math.pi - math.atan(-dy / dx)
-        elif (dx < 0.0 and dy <= 0.0):
-            angle = math.pi + math.atan(dy / dx)
-        else:
-            angle = math.pi - math.atan(-dy / dx)
-
-        quaternion = (self.pose.orientation.x,
-                      self.pose.orientation.y,
-                      self.pose.orientation.z,
-                      self.pose.orientation.w)
-        euler = tf.transformations.euler_from_quaternion(quaternion)
-
-        car_angle = euler[2]
-        # Normalize orientation
-        while (car_angle < 0):
-            car_angle += 2 * math.pi
-        while (car_angle > 2 * math.pi):
-            car_angle -= 2 * math.pi
-        assert (car_angle >= 0 and car_angle <= 2 * math.pi)
-
-        delta_angle = abs(angle - car_angle)
-        if (delta_angle >= 0.5 * math.pi and delta_angle <= 1.5 * math.pi):
-            return True
-        else:
-            return False
-
-
-
-    def squared_dist(self, index):
-        dx = self.pose.position.x - self.base_waypoints.waypoints[index].pose.pose.position.x
-        dy = self.pose.position.y - self.base_waypoints.waypoints[index].pose.pose.position.y
-        return dx**2 + dy**2
-
     def pose_cb(self, msg):
         # TODO: Implement
-        self.pose = msg.pose
-        rospy.loginfo("Received new position: x={}, y={}".format(self.pose.position.x,
-                                                                 self.pose.position.y))
+        self.pose = msg
+        rospy.loginfo("Received new position: x={}, y={}".format(self.pose.pose.position.x,
+                                                                 self.pose.pose.position.y))
 
     def waypoints_cb(self, waypoints):
         if (self.base_waypoints == None):
@@ -163,14 +102,6 @@ class WaypointUpdater(object):
 
     def set_waypoint_velocity(self, waypoints, waypoint, velocity):
         waypoints[waypoint].twist.twist.linear.x = velocity
-
-    def distance(self, waypoints, wp1, wp2):
-        dist = 0
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
-        for i in range(wp1, wp2+1):
-            dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
-            wp1 = i
-        return dist
 
 
 if __name__ == '__main__':

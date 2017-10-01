@@ -16,7 +16,7 @@
     <include file="$(find waypoint_updater)/launch/waypoint_updater.launch"/>
 
     <!-- visualize track and other information -->
-    <arg name="dashboard" default="False" unless="$(arg dashboard)" />
+    <arg name="dashboard" default="True" unless="$(arg dashboard)" />
     <group if="$(arg dashboard)">
         <include file="$(find dashboard)/launch/dashboard.launch"/>
     </group>

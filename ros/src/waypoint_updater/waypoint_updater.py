@@ -25,10 +25,9 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
 
-
 class WaypointUpdater(object):
     def __init__(self):
-        rospy.init_node('waypoint_updater')
+        rospy.init_node('waypoint_updater', log_level=rospy.INFO)
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -38,13 +37,13 @@ class WaypointUpdater(object):
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
-        # TODO: Add other member variables you need below
+        # Member variables
         self.base_waypoints = None
         self.pose = None
         self.len_waypoints = None
+        self.lookahead_wps = None
 
         self.loop()
-        #rospy.spin()
 
     def loop(self):
         rate = rospy.Rate(10)  # 10Hz
@@ -64,21 +63,21 @@ class WaypointUpdater(object):
                     if (closest_index == self.len_waypoints):
                         closest_index = 0
 
-                rospy.loginfo("Closed Waypoint index is: {}, x={}, y={}".
+                rospy.logdebug("Closed Waypoint index is: {}, x={}, y={}".
                               format(closest_index,
                                      self.base_waypoints.waypoints[closest_index].pose.pose.position.x,
                                      self.base_waypoints.waypoints[closest_index].pose.pose.position.y))
 
                 final_waypoints = None
-                if (closest_index < self.len_waypoints - LOOKAHEAD_WPS):
-                    final_waypoints = self.base_waypoints.waypoints[closest_index:closest_index + LOOKAHEAD_WPS]
+                if (closest_index < self.len_waypoints - self.lookahead_wps):
+                    final_waypoints = self.base_waypoints.waypoints[closest_index:closest_index + self.lookahead_wps]
                 else:
                     final_waypoints = self.base_waypoints.waypoints[closest_index:]
-                    rest = LOOKAHEAD_WPS - (self.len_waypoints - closest_index)
+                    rest = self.lookahead_wps - (self.len_waypoints - closest_index)
                     final_waypoints += self.base_waypoints.waypoints[:rest]
 
                 rospy.loginfo("Length of final_waypoints is {}".format(len(final_waypoints)))
-                assert (len(final_waypoints) == LOOKAHEAD_WPS)
+                assert (len(final_waypoints) == self.lookahead_wps)
 
                 lane = Lane()
                 lane.header.stamp = rospy.Time.now()
@@ -86,7 +85,7 @@ class WaypointUpdater(object):
                 lane.waypoints = final_waypoints
                 self.final_waypoints_pub.publish(lane)
 
-                rospy.loginfo("Published final waypoints...")
+                rospy.logdebug("Published final waypoints...")
                 rospy.logdebug(lane)
 
             rate.sleep()
@@ -131,24 +130,22 @@ class WaypointUpdater(object):
         else:
             return False
 
-
-
     def squared_dist(self, index):
         dx = self.pose.position.x - self.base_waypoints.waypoints[index].pose.pose.position.x
         dy = self.pose.position.y - self.base_waypoints.waypoints[index].pose.pose.position.y
-        return dx**2 + dy**2
+        return dx*dx + dy*dy
 
     def pose_cb(self, msg):
-        # TODO: Implement
         self.pose = msg.pose
-        rospy.loginfo("Received new position: x={}, y={}".format(self.pose.position.x,
+        rospy.logdebug("Received new position: x={}, y={}".format(self.pose.position.x,
                                                                  self.pose.position.y))
 
     def waypoints_cb(self, waypoints):
         if (self.base_waypoints == None):
             self.base_waypoints = waypoints
             self.len_waypoints = len(self.base_waypoints.waypoints)
-            rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))
+            self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints)
+            rospy.logwarn("Waypoints loaded... found {}.".format(self.len_waypoints))
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement

@@ -19,7 +19,9 @@
     <include file="$(find dashboard)/launch/dashboard.launch"/>
 
     <!--Traffic Light Detector Node -->
-    <include file="$(find tl_detector)/launch/tl_detector.launch"/>
+    <include file="$(find tl_detector)/launch/tl_detector.launch">
+        <arg name="training" value="$(arg training)" />
+    </include>
 
     <!--Traffic Light Locations and Camera Config -->
     <param name="traffic_light_config" textfile="$(find tl_detector)/sim_traffic_light_config.yaml" />

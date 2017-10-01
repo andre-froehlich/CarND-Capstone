@@ -8,4 +8,4 @@ scipy
 keras
 tensorflow==1.0.0
 h5py
-pygame==1.9.3
+pygame>=1.9.3

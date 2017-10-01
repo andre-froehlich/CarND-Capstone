@@ -133,3 +133,12 @@ def squared_dist(pose_1, pose_2):
     dx = pose_1.pose.position.x - pose_2.pose.position.x
     dy = pose_1.pose.position.y - pose_2.pose.position.y
     return dx * dx + dy * dy
+
+
+def distance(waypoints, wp1, wp2):
+    dist = 0
+    dl = lambda a, b: math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
+    for i in range(wp1, wp2 + 1):
+        dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
+        wp1 = i
+    return dist

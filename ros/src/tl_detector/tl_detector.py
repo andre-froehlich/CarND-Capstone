@@ -51,9 +51,10 @@ class TLDetector(object):
         self.state_count = 0
         self.has_image = False
 
-        self.collect_training_data = False
+        self.collect_training_data = rospy.get_param('~collect_training_data', False)
         self.training_data_counter = 0
         if self.collect_training_data:
+            rospy.logwarn("Collcting training data!")
             self.state_file = open("../../../training_data/state.txt","w")
 
         rospy.spin()
@@ -72,9 +73,6 @@ class TLDetector(object):
 
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
-
-        checker = True if self.waypoints else False
-        rospy.logerr("WAYPOINTS CB: {}".format(checker))
 
         # rospy.logerr("X: {}".format(self.waypoints.waypoints[0].pose.pose.position.x))
 

@@ -51,7 +51,7 @@ class TLDetector(object):
         self.state_count = 0
         self.has_image = False
 
-        self.collect_training_data = True
+        self.collect_training_data = False
         self.training_data_counter = 0
         if self.collect_training_data:
             self.state_file = open("../../../training_data/state.txt","w")
@@ -72,6 +72,9 @@ class TLDetector(object):
 
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
+
+        checker = True if self.waypoints else False
+        rospy.logerr("WAYPOINTS CB: {}".format(checker))
 
         # rospy.logerr("X: {}".format(self.waypoints.waypoints[0].pose.pose.position.x))
 
@@ -158,7 +161,7 @@ class TLDetector(object):
 
         for i in range(0, len(pose_list)):
             # Check if pose in list in in front of the vehicle
-            if self.check_is_ahead(base_pose, pose_list[i].pose):
+            if self.check_is_ahead(base_pose.pose, pose_list[i].pose.pose):
 
                 # Calculate the distance between pose und pose in list
                 dist = self.squared_dist(base_pose, pose_list[i].pose)
@@ -174,11 +177,48 @@ class TLDetector(object):
                     closest_index = i
         return closest_index, math.sqrt(closest_dist)
 
+    def get_closest_stop_line(self, tl_pose, tl_list):
+        """
+        Finds the closest stop line to the traffic light
+        :param tl_pose: pose of traffic light
+        :param tl_list: pose of stop line according to tl_pose
+        :return: index of list entry
+        """
+        closest_dist = float("inf")
+        closest_index = 0
+
+        for i in range(0, len(tl_list)):
+            # Check if ahead (probably not necessary
+
+            # Calculate the distance between tl_pose and poses in list
+            dx = tl_pose.position.x - tl_list[i][0]
+            dy = tl_pose.position.y - tl_list[i][1]
+            dist = dx*dx + dy*dy
+
+            if dist < closest_dist:
+                # Save
+                closest_dist = dist
+                closest_index = i
+
+        return closest_index
+
+
+
     def check_is_ahead(self, pose_1, pose_2):
-        dx = pose_2.pose.position.x - pose_1.pose.position.x
-        dy = pose_2.pose.position.y - pose_1.pose.position.y
+        """
+        Checks if pose_2 is in front of the vehicle (pose_1)
+        :param pose_1: must (directly) contain position and orientation
+        :param pose_2: must (directly) contain position and orientation
+        :return: True / False
+        """
+        # Distances in x and y
+        dx = pose_2.position.x - pose_1.position.x
+        dy = pose_2.position.y - pose_1.position.y
+
+        # Init angle
         angle = None
 
+        # Quadrant definition
         if (dx == 0):
             if (dy >= 0):
                 angle = 0.5 * math.pi
@@ -193,10 +233,11 @@ class TLDetector(object):
         else:
             angle = math.pi - math.atan(-dy / dx)
 
-        quaternion = (pose_1.pose.orientation.x,
-                      pose_1.pose.orientation.y,
-                      pose_1.pose.orientation.z,
-                      pose_1.pose.orientation.w)
+        # Transformation from quaternion to euler
+        quaternion = (pose_1.orientation.x,
+                      pose_1.orientation.y,
+                      pose_1.orientation.z,
+                      pose_1.orientation.w)
         euler = tf.transformations.euler_from_quaternion(quaternion)
 
         car_angle = euler[2]
@@ -287,19 +328,59 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
+        # Init flag for detected light
         light = None
+
+        checker = True if self.waypoints else False
 
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
-        if(self.pose):
-            car_position = self.get_closest_waypoint(self.pose.pose)
+        #rospy.logerr("Fist Stop Light: X: {}, Y: {}".format(stop_line_positions[0][0], stop_line_positions[0][1]))
+
+        if(self.pose and self.waypoints):
+            # Get car position and its distance to next base waypoint
+            index_car_position, distance_to_waypoint = self.get_next(
+                self.pose,
+                self.waypoints.waypoints)
+            car_position = self.waypoints.waypoints[index_car_position].pose.pose
+
+
+            #rospy.logerr(self.lights)
+            index_next_tl, distance_next_tl = self.get_next(self.pose, self.lights)
+            next_tl = self.lights[index_next_tl].pose.pose
+
+            # Find closest stop line to traffic light
+            index_next_stop_line = self.get_closest_stop_line(next_tl, stop_line_positions)
+            next_stop_line = stop_line_positions[index_next_stop_line]
+
+            monitor = True
+            if monitor:
+                rospy.logerr("")
+                rospy.logerr("Current Position of Car: X: {}, Y: {}".format(
+                    self.pose.pose.position.x,
+                    self.pose.pose.position.y))
+                rospy.logerr("Closest Waypoint to Car: X: {}, Y: {}".format(
+                    car_position.position.x,
+                    car_position.position.y))
+                rospy.logerr("Closest Traffic Light:   X: {}, Y: {}".format(
+                    next_tl.position.x,
+                    next_tl.position.y))
+                rospy.logerr("Closest Stop Line:       X: {}, Y: {}".format(
+                    next_stop_line[0],
+                    next_stop_line[1]))
 
         #TODO find the closest visible traffic light (if one exists)
+
+        elif not self.waypoints:
+            rospy.logerr("No base_waypoints available")
+        elif not self.pose:
+            rospy.logerr("No self.pose available")
 
         if light:
             state = self.get_light_state(light)
             return light_wp, state
-        self.waypoints = None
+        # Commented out; original by udacity;
+        #self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':

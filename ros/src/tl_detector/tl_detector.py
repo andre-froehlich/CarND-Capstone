@@ -10,12 +10,13 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+import math
 
 STATE_COUNT_THRESHOLD = 3
 
 class TLDetector(object):
     def __init__(self):
-        rospy.init_node('tl_detector')
+        rospy.init_node('tl_detector', log_level=rospy.ERROR)
 
         self.pose = None
         self.waypoints = None
@@ -52,7 +53,8 @@ class TLDetector(object):
 
         self.collect_training_data = True
         self.training_data_counter = 0
-        self.state_file = open("../../../training_data/state.txt","w")
+        if self.collect_training_data:
+            self.state_file = open("../../../training_data/state.txt","w")
 
         rospy.spin()
 
@@ -80,18 +82,21 @@ class TLDetector(object):
         if self.pose == None:
             return
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+
+        index, dist = self.get_next(self.pose, self.lights)
+        traffic_light = self.lights[index]
+        # Through out cases where traffic light is only partially visible?
+        if (dist > 21.0 and dist < 220.0):
+            state = traffic_light.state
+        else:
+            state = 4
+
         cv2.imwrite("../../../training_data/data{:06d}.png".format(self.training_data_counter), cv_image)
-        self.state_file.write("{}".format(0))
-        #self.state_file.write("Current POSE: {}\nEND POSE\n".format(self.pose))
-        #self.state_file.write("LIGHTS: {}\nEND LIGHTS\n".format(self.lights))
-        rospy.logerr("Curr POSE:")
-        rospy.logerr(self.pose)
-        rospy.logerr("\n")
-        rospy.logerr("LIGHTS:")
-        rospy.logerr(self.lights)
+        self.state_file.write("{},{},{},{}\n".format(self.training_data_counter, index,
+                                                  dist, state))
+        self.state_file.flush()
 
         self.training_data_counter += 1
-        self.collect_training_data = False
 
     def image_cb(self, msg):
         """Identifies red lights in the incoming camera image and publishes the index
@@ -146,30 +151,72 @@ class TLDetector(object):
         Returns index of the next list entry to base_pose
         :param base_pose: Single Pose (e.g. current pose)
         :param pose_list: List with poses to search for the closest
-        :return: Index of closest list entry
+        :return: Index of closest list entry and distance
         """
         closest_dist = float("inf")
         closest_index = 0
 
         for i in range(0, len(pose_list)):
             # Check if pose in list in in front of the vehicle
-            if self.check_is_ahead(base_pose, pose_list[i]):
+            if self.check_is_ahead(base_pose, pose_list[i].pose):
 
                 # Calculate the distance between pose und pose in list
-                dist = self.squared_dist(base_pose, pose_list[i])
+                dist = self.squared_dist(base_pose, pose_list[i].pose)
+                #if (i == 0):
+                    #rospy.logwarn("dist={}".format(math.sqrt(dist)))
+                    #rospy.logwarn("******SELFPOSE{}".format(base_pose.pose))
+                    #rospy.logwarn("******LIGHT{}".format(pose_list[i].pose))
+
                 # If distance is smaller than last saved distance
                 if dist < closest_dist:
                     # Save
                     closest_dist = dist
                     closest_index = i
+        return closest_index, math.sqrt(closest_dist)
 
     def check_is_ahead(self, pose_1, pose_2):
-        # TODO: Use vehicle orientation to identify which points are ahead
-        return True
+        dx = pose_2.pose.position.x - pose_1.pose.position.x
+        dy = pose_2.pose.position.y - pose_1.pose.position.y
+        angle = None
+
+        if (dx == 0):
+            if (dy >= 0):
+                angle = 0.5 * math.pi
+            else:
+                angle = 1.5 * math.pi
+        elif (dx > 0.0 and dy >= 0.0):
+            angle = math.atan(dy / dx)
+        elif (dx > 0.0 and dy <= 0.0):
+            angle = 2 * math.pi - math.atan(-dy / dx)
+        elif (dx < 0.0 and dy <= 0.0):
+            angle = math.pi + math.atan(dy / dx)
+        else:
+            angle = math.pi - math.atan(-dy / dx)
+
+        quaternion = (pose_1.pose.orientation.x,
+                      pose_1.pose.orientation.y,
+                      pose_1.pose.orientation.z,
+                      pose_1.pose.orientation.w)
+        euler = tf.transformations.euler_from_quaternion(quaternion)
+
+        car_angle = euler[2]
+        # Normalize orientation
+        while (car_angle < 0):
+            car_angle += 2 * math.pi
+        while (car_angle > 2 * math.pi):
+            car_angle -= 2 * math.pi
+
+        assert (car_angle >= 0 and car_angle <= 2 * math.pi)
+
+        delta_angle = abs(angle - car_angle)
+        if (delta_angle >= 0.5 * math.pi and delta_angle <= 1.5 * math.pi):
+            return False
+        else:
+            return True
 
     def squared_dist(self, pose_1, pose_2):
-        dx = pose_1.position.x - pose_2.position.x
-        dy = pose_1.position.y - pose_2.position.y
+        dx = pose_1.pose.position.x - pose_2.pose.position.x
+        dy = pose_1.pose.position.y - pose_2.pose.position.y
         return dx*dx + dy*dy
 
     def project_to_image_plane(self, point_in_world):

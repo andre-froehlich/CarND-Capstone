@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import cv2
+import yaml
 import numpy as np
 from math import sqrt
 import pygame
@@ -11,6 +12,7 @@ from styx_msgs.msg import Lane, Waypoint, TrafficLightArray, TrafficLight
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+from utilities import utils
 
 # couple of colors
 BLACK = (0, 0, 0)
@@ -44,6 +46,7 @@ class Dashboard(object):
 
     # traffic lights per state
     _traffic_lights_per_state = dict()
+    _lights = None
 
     # shows the track in white on black background
     _track_image = None
@@ -80,6 +83,10 @@ class Dashboard(object):
         # current velocity and twist topic
         # rospy.Subscriber('/current_velocity', TwistStamped, self._set_current_velocity)
         # rospy.Subscriber('/twist_cmd', TwistStamped, self._set_twist_cmd)
+
+        # Load traffic light config
+        config_string = rospy.get_param("/traffic_light_config")
+        self._config = yaml.load(config_string)
 
         # initialize screen with given parameters from dashboard.launch
         self._init_screen()
@@ -133,13 +140,13 @@ class Dashboard(object):
         cv2.polylines(self._track_image, vertices, True, self._base_waypoints_color, 5)
 
         # draw initial car position
-        self._current_pose = self._base_waypoints[-1].pose.pose
+        self._current_pose = self._base_waypoints[-1].pose
         self._draw_current_position()
 
     def _draw_current_position(self):
         if self._current_pose is not None:
-            x = int(self._current_pose.position.x)
-            y = int(self._screen_dimensions[1] - (self._current_pose.position.y - 1000.))
+            x = int(self._current_pose.pose.position.x)
+            y = int(self._screen_dimensions[1] - (self._current_pose.pose.position.y - 1000.))
             cv2.circle(self._dashboard_img, (x, y), 10, self._ego_color, -1)
             self._put_position_to_circle((x, y), inside=False, showLine=True)
 
@@ -251,20 +258,31 @@ class Dashboard(object):
     def _save_image(self, state):
         if self._image is None:
             rospy.logwarn("Cannot save screenshot, because no image was received yet.")
+        elif self._lights is None:
+            rospy.logwarn("Cannot save screenshot, because no traffic light information was received yet.")
         else:
             time = rospy.Time.now().to_nsec()
             cv_image = self._bridge.imgmsg_to_cv2(self._image, "bgr8")
             cv2.imwrite("../../../training_data/img_time{:21d}_state{:1d}.png".format(time, state), cv_image)
             rospy.logwarn("Saved screenshot with state {} at time {}...".format(state, time))
 
+            index, dist = utils.get_next(self._current_pose, self._lights)
+            traffic_light = self._lights[index]
+
+            x, y = utils.project_to_image_plane(traffic_light.pose.pose.position)
+
+            rospy.logwarn("TL index={}".format(index))
+            rospy.logwarn("Pixel value for traffic light: x={}, y={}".format(x, y))
+
+
     def close(self):
         rospy.logwarn("close")
         pygame.quit()
 
     def _set_current_pose(self, msg):
-        self._current_pose = msg.pose
+        self._current_pose = msg
         rospy.loginfo(
-            "Received new position: x={}, y={}".format(self._current_pose.position.x, self._current_pose.position.y))
+            "Received new position: x={}, y={}".format(self._current_pose.pose.position.x, self._current_pose.pose.position.y))
 
     def _set_base_waypoints(self, lane):
         if self._base_waypoints is None:
@@ -299,6 +317,7 @@ class Dashboard(object):
         self._image = msg
 
     def _set_traffic_lights(self, msg):
+        self._lights = msg.lights
         self._traffic_lights_per_state.clear()
         for tl in msg.lights:
             x_tl = tl.pose.pose.position.x

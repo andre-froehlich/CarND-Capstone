@@ -4,7 +4,6 @@ import rospy
 import tf
 import math
 
-
 def get_closest_waypoint(waypoints, pose):
     """Identifies the closest path waypoint to the given position
         https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
@@ -35,10 +34,6 @@ def get_next(base_pose, pose_list):
 
             # Calculate the distance between pose und pose in list
             dist = squared_dist(base_pose, pose_list[i].pose)
-            # if (i == 0):
-            # rospy.logwarn("dist={}".format(math.sqrt(dist)))
-            # rospy.logwarn("******SELFPOSE{}".format(base_pose.pose))
-            # rospy.logwarn("******LIGHT{}".format(pose_list[i].pose))
 
             # If distance is smaller than last saved distance
             if dist < closest_dist:
@@ -135,6 +130,7 @@ def squared_dist(pose_1, pose_2):
     return dx * dx + dy * dy
 
 
+# TODO Do we need this function?
 def distance(waypoints, wp1, wp2):
     dist = 0
     dl = lambda a, b: math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
@@ -142,3 +138,60 @@ def distance(waypoints, wp1, wp2):
         dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
         wp1 = i
     return dist
+
+
+transform_listener = tf.TransformListener()
+
+def project_to_image_plane(point_in_world, fx=1350.0, fy=1350.0, image_width=800, image_height=600):
+    """Project point from 3D world coordinates to 2D camera image location
+
+    Args:
+        point_in_world (Point): 3D location of a point in the world
+
+    Returns:
+        x (int): x coordinate of target point in image
+        y (int): y coordinate of target point in image
+
+    """
+
+    # fx = self.config['camera_info']['focal_length_x']
+    # fy = self.config['camera_info']['focal_length_y']
+    # image_width = self.config['camera_info']['image_width']
+    # image_height = self.config['camera_info']['image_height']
+
+    # get transform between pose of camera and world frame
+    trans = None
+    rot = None
+    try:
+        now = rospy.Time.now()
+        transform_listener.waitForTransform("/base_link", "/world", now, rospy.Duration(1.0))
+        trans, rot = transform_listener.lookupTransform("/base_link", "/world", now)
+    except (tf.Exception, tf.LookupException, tf.ConnectivityException):
+        rospy.logerr("Failed to find camera to map transform.")
+        return None
+
+    # TODO Use transform and rotation to calculate 2D position of light in image
+    if trans is not None:
+        px = point_in_world.x
+        py = point_in_world.y
+        pz = point_in_world.z
+        xt = trans[0]
+        yt = trans[1]
+        zt = trans[2]
+
+        euler = tf.transformations.euler_from_quaternion(rot)
+        sinyaw = math.sin(euler[2])
+        cosyaw = math.cos(euler[2])
+
+        Rnt = (
+            px * cosyaw - py * sinyaw + xt,
+            px * sinyaw + py * cosyaw + yt,
+            pz + zt)
+
+        x = int(fx * -Rnt[1] / Rnt[0] + image_width / 2)
+        y = int(fy * -Rnt[2] / Rnt[0] + image_height / 2)
+
+        return x, y
+
+    else:
+        return None

@@ -211,11 +211,10 @@ class Dashboard(object):
             # draw polylines of the track
             cv2.polylines(self._dashboard_img, vertices, False, self._final_waypoints_color, 8)
 
-    def _write_next_traffic_light(self, baseline):
-        baseline2 = None
+    def _write_next_traffic_light(self, size=15):
         if self._current_pose is not None and self._base_waypoints is not None and self._lights is not None and self._stop_line_positions is not None:
             # Get car position and its distance to next base waypoint
-            index_car_position, distance_to_waypoint = utils.get_next(self._current_pose, self.waypoints)
+            index_car_position, distance_to_waypoint = utils.get_next(self._current_pose, self._base_waypoints)
             car_position = self._base_waypoints[index_car_position].pose.pose
 
             # rospy.logerr(self.lights)
@@ -223,23 +222,24 @@ class Dashboard(object):
             next_tl = self._lights[index_next_tl].pose.pose
 
             dist_tl_text = "Traffic Light #{} comes up in {} m".format(index_next_tl, distance_next_tl)
-            size1, baseline1 = self._get_text_size(dist_tl_text)
-            cv2.putText(self._dashboard_img, dist_tl_text, (50, baseline + 15 + size1[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
-            cv2.putText(self._dashboard_img, dist_tl_text, (50, baseline + 15 + size1[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+            size1, _ = self._get_text_size(dist_tl_text)
+            size += 15 + size1[1]
+            cv2.putText(self._dashboard_img, dist_tl_text, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
+            cv2.putText(self._dashboard_img, dist_tl_text, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
 
             # Find closest stop line to traffic light
             index_next_stop_line = utils.get_closest_stop_line(next_tl, self._stop_line_positions)
             next_stop_line = self._stop_line_positions[index_next_stop_line]
-            distance_next_stop_line = utils.distance2d((car_position.x, car_position.y), next_stop_line)
+            distance_next_stop_line = utils.distance2d((car_position.position.x, car_position.position.y), next_stop_line)
 
             dist_hl_text = "Stop Line for Traffic Light #{} in {} m".format(index_next_tl, distance_next_stop_line)
-            size2, baseline2 = self._get_text_size(dist_hl_text)
-            cv2.putText(self._dashboard_img, dist_hl_text, (50, baseline1 + 15 + size2[1]), cv2.FONT_HERSHEY_COMPLEX, 2,
-                        self._text_shadow_color, 4)
-            cv2.putText(self._dashboard_img, dist_hl_text, (50, baseline1 + 15 + size2[1]), cv2.FONT_HERSHEY_COMPLEX, 2,
-                        self._text_color, 2)
+            size2, _ = self._get_text_size(dist_hl_text)
+            size += 15 + size2[1]
+            cv2.putText(self._dashboard_img, dist_hl_text, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
+            cv2.putText(self._dashboard_img, dist_hl_text, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
 
-        return baseline2
+            return size
+        return size
 
     def _loop(self):
         # 1Hz should be enough
@@ -279,12 +279,12 @@ class Dashboard(object):
 
                 # test text
                 header = "Happy Robots"
-                size, baseline = self._get_text_size(header)
-                cv2.putText(self._dashboard_img, header, (50, 15 + size[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
-                cv2.putText(self._dashboard_img, header, (50, 15 + size[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+                size, _ = self._get_text_size(header)
+                size = size[1] + 15
+                cv2.putText(self._dashboard_img, header, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
+                cv2.putText(self._dashboard_img, header, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
 
-                baseline = self._write_next_traffic_light(baseline)
-                rospy.logwarn("baseline: {}".format(baseline))
+                baseline = self._write_next_traffic_light(size)
 
                 # update screen with new image and refresh window
                 self._update_screen()

@@ -2,6 +2,7 @@
 
 import cv2
 import numpy as np
+from math import sqrt
 import pygame
 import rospy
 from ast import literal_eval as make_tuple
@@ -132,6 +133,28 @@ class Dashboard(object):
             x = int(self._current_pose.position.x)
             y = int(self._screen_dimensions[1] - (self._current_pose.position.y - 1000.))
             cv2.circle(self._dashboard_img, (x, y), 10, self._ego_color, -1)
+            self._put_position_to_circle((x, y), inside=False, showLine=True)
+
+    def _put_position_to_circle(self, coordinates, inside=True, showLine=False):
+        center = (self._screen_dimensions[0] // 2, self._screen_dimensions[0] - 1000.)
+        text = "({}/{})".format(coordinates[0], coordinates[1])
+        r = (center[0]-coordinates[0], center[1]-coordinates[1])
+        mag = sqrt(r[0]**2 + r[1]**2)
+        e_r = (r[0]/mag, r[1]/mag)
+
+        dist = 150. if inside else -100.
+        if coordinates[0] > 2000.:
+            size, _ = self._get_text_size(text)
+            dist = size[0] + 50
+
+        ap = (dist * e_r[0], dist * e_r[1])
+        p = (int(coordinates[0] + ap[0]), int(coordinates[1] + ap[1]))
+
+        if showLine:
+            cv2.line(self._dashboard_img, (int(coordinates[0]), int(coordinates[1])), p, self._base_waypoints_color, 3)
+
+        cv2.putText(self._dashboard_img, text, p, cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
+        cv2.putText(self._dashboard_img, text, p, cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
 
     def _draw_traffic_lights(self):
         if self._traffic_lights_per_state is not None:
@@ -141,6 +164,7 @@ class Dashboard(object):
                     x = int(tl[0])
                     y = int(self._screen_dimensions[1] - (tl[1] - 1000.))
                     cv2.circle(self._dashboard_img, (x, y), 15, color, -1)
+                    self._put_position_to_circle((x, y))
 
     def _draw_dbw_status(self):
         state = RED

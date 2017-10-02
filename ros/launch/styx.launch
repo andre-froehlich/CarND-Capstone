@@ -16,7 +16,10 @@
     <include file="$(find waypoint_updater)/launch/waypoint_updater.launch"/>
 
     <!-- visualize track and other information -->
-    <include file="$(find dashboard)/launch/dashboard.launch"/>
+    <arg name="dashboard" default="True" unless="$(arg dashboard)" />
+    <group if="$(arg dashboard)">
+        <include file="$(find dashboard)/launch/dashboard.launch"/>
+    </group>
 
     <!--Traffic Light Detector Node -->
     <include file="$(find tl_detector)/launch/tl_detector.launch">

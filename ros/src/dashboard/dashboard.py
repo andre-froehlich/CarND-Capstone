@@ -56,6 +56,9 @@ class Dashboard(object):
     _image = None
     _bridge = CvBridge()
 
+    _config = None
+    _stop_line_positions = None
+
     def __init__(self):
         rospy.init_node('dashboard_node')
 
@@ -87,6 +90,9 @@ class Dashboard(object):
         # Load traffic light config
         config_string = rospy.get_param("/traffic_light_config")
         self._config = yaml.load(config_string)
+
+        # List of positions that correspond to the line to stop in front of for a given intersection
+        self._stop_line_positions = self._config['stop_line_positions']
 
         # initialize screen with given parameters from dashboard.launch
         self._init_screen()
@@ -205,6 +211,35 @@ class Dashboard(object):
             # draw polylines of the track
             cv2.polylines(self._dashboard_img, vertices, False, self._final_waypoints_color, 8)
 
+    def _write_next_traffic_light(self, baseline):
+        if self._current_pose is not None and self._base_waypoints is not None and self._lights is not None and self._stop_line_positions is not None:
+            # Get car position and its distance to next base waypoint
+            index_car_position, distance_to_waypoint = utils.get_next(self._current_pose, self._base_waypoints.waypoints)
+            car_position = self._base_waypoints.waypoints[index_car_position].pose.pose
+
+            # rospy.logerr(self.lights)
+            index_next_tl, distance_next_tl = utils.get_next(self._current_pose, self._lights)
+            next_tl = self._lights[index_next_tl].pose.pose
+
+            dist_tl_text = "Traffic Light #{} comes up in {} m".format(index_next_tl, distance_next_tl)
+            size1, baseline1 = cv2.getTextSize(dist_tl_text)
+            cv2.putText(self._dashboard_img, dist_tl_text, (50, baseline + 15 + size1[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
+            cv2.putText(self._dashboard_img, dist_tl_text, (50, baseline + 15 + size1[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+
+            # Find closest stop line to traffic light
+            index_next_stop_line = utils.get_closest_stop_line(next_tl, self._stop_line_positions)
+            next_stop_line = self._stop_line_positions[index_next_stop_line]
+            distance_next_stop_line = utils.distance2d((car_position.x, car_position.y), next_stop_line)
+
+            dist_hl_text = "Stop Line for Traffic Light #{} in {} m".format(index_next_tl, distance_next_stop_line)
+            size2, baseline2 = cv2.getTextSize(dist_hl_text)
+            cv2.putText(self._dashboard_img, dist_hl_text, (50, baseline1 + 15 + size2[1]), cv2.FONT_HERSHEY_COMPLEX, 2,
+                        self._text_shadow_color, 4)
+            cv2.putText(self._dashboard_img, dist_hl_text, (50, baseline1 + 15 + size2[1]), cv2.FONT_HERSHEY_COMPLEX, 2,
+                        self._text_color, 2)
+
+        return baseline2
+
     def _loop(self):
         # 1Hz should be enough
         rate = rospy.Rate(1)
@@ -215,19 +250,19 @@ class Dashboard(object):
                 if pygame.key.get_focused():
                     key = pygame.key.get_pressed()
 
-                    if (key[pygame.K_ESCAPE]):
+                    if key[pygame.K_ESCAPE]:
                         self.close()
 
-                    if (key[pygame.K_0]):
+                    if key[pygame.K_0]:
                         self._save_image(0)
 
-                    if (key[pygame.K_1]):
+                    if key[pygame.K_1]:
                         self._save_image(1)
 
-                    if (key[pygame.K_2]):
+                    if key[pygame.K_2]:
                         self._save_image(2)
 
-                    if (key[pygame.K_4]):
+                    if key[pygame.K_4]:
                         self._save_image(4)
 
                 # get copy of track_image
@@ -243,8 +278,12 @@ class Dashboard(object):
 
                 # test text
                 header = "Happy Robots"
-                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
-                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+                size, baseline = cv2.getTextSize(header)
+                cv2.putText(self._dashboard_img, header, (50, 15 + size[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
+                cv2.putText(self._dashboard_img, header, (50, 15 + size[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+
+                baseline = self._write_next_traffic_light(baseline)
+                rospy.logwarn("baseline: {}".format(baseline))
 
                 # update screen with new image and refresh window
                 self._update_screen()
@@ -274,8 +313,8 @@ class Dashboard(object):
             rospy.logwarn("TL index={}".format(index))
             rospy.logwarn("Pixel value for traffic light: x={}, y={}".format(x, y))
 
-
-    def close(self):
+    @staticmethod
+    def close():
         rospy.logwarn("close")
         pygame.quit()
 
@@ -329,7 +368,8 @@ class Dashboard(object):
                 self._traffic_lights_per_state[state_tl] = list()
             self._traffic_lights_per_state[state_tl].append((x_tl, y_tl, orientation_tl, stamp_tl))
 
-    def _get_text_size(self, text, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=2, thickness=2):
+    @staticmethod
+    def _get_text_size(text, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=2, thickness=2):
         return cv2.getTextSize(text, fontFace, fontScale, thickness)
 
 

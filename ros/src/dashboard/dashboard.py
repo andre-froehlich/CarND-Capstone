@@ -9,6 +9,8 @@ from ast import literal_eval as make_tuple
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint, TrafficLightArray, TrafficLight
 from std_msgs.msg import Bool
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 # couple of colors
 BLACK = (0, 0, 0)
@@ -48,6 +50,9 @@ class Dashboard(object):
     # is updated each iteration with new values
     _dashboard_img = None
 
+    _image = None
+    _bridge = CvBridge()
+
     def __init__(self):
         rospy.init_node('dashboard_node')
 
@@ -68,6 +73,9 @@ class Dashboard(object):
 
         # is Drive-By-Wire enabled?
         rospy.Subscriber('/dbw_enabled', Bool, self._set_dbw_enabled)
+
+        # subscribe to camera image
+        rospy.Subscriber('/image_color', Image, self._set_image)
 
         # current velocity and twist topic
         # rospy.Subscriber('/current_velocity', TwistStamped, self._set_current_velocity)
@@ -195,6 +203,26 @@ class Dashboard(object):
         rate = rospy.Rate(1)
         while not rospy.is_shutdown():
             if self._base_waypoints is not None:
+
+                pygame.event.pump()
+                if pygame.key.get_focused():
+                    key = pygame.key.get_pressed()
+
+                    if (key[pygame.K_ESCAPE]):
+                        self.close()
+
+                    if (key[pygame.K_0]):
+                        self._save_image(0)
+
+                    if (key[pygame.K_1]):
+                        self._save_image(1)
+
+                    if (key[pygame.K_2]):
+                        self._save_image(2)
+
+                    if (key[pygame.K_4]):
+                        self._save_image(4)
+
                 # get copy of track_image
                 self._dashboard_img = np.copy(self._track_image)
 
@@ -219,6 +247,15 @@ class Dashboard(object):
 
         # clean shutdown
         self.close()
+
+    def _save_image(self, state):
+        if self._image is None:
+            rospy.logwarn("Cannot save screenshot, because no image was received yet.")
+        else:
+            time = rospy.Time.now().to_nsec()
+            cv_image = self._bridge.imgmsg_to_cv2(self._image, "bgr8")
+            cv2.imwrite("../../../training_data/img_time{:21d}_state{:1d}.png".format(time, state), cv_image)
+            rospy.logwarn("Saved screenshot with state {} at time {}...".format(state, time))
 
     def close(self):
         rospy.logwarn("close")
@@ -257,6 +294,9 @@ class Dashboard(object):
 
     def _set_twist_cmd(self, msg):
         self._twist_cmd = msg
+
+    def _set_image(self, msg):
+        self._image = msg
 
     def _set_traffic_lights(self, msg):
         self._traffic_lights_per_state.clear()

@@ -1,17 +1,23 @@
 #!/usr/bin/env python
 
-import cv2
-import yaml
 import numpy as np
+import yaml
+from ast import literal_eval as make_tuple
+from cv_bridge import CvBridge
 from math import sqrt
+
+import cv2
 import pygame
 import rospy
-from ast import literal_eval as make_tuple
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd
 from geometry_msgs.msg import PoseStamped, TwistStamped
-from styx_msgs.msg import Lane, Waypoint, TrafficLightArray, TrafficLight
-from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
+from std_msgs.msg import Bool
+from styx_msgs.msg import Lane, TrafficLightArray
 from utilities import utils
 
 # couple of colors
@@ -43,6 +49,9 @@ class Dashboard(object):
     _dbw_enabled = False
     _current_velocity = None
     _twist_cmd = None
+    _steering_cmd = None
+    _brake_cmd = None
+    _throttle_cmd = None
 
     # traffic lights per state
     _traffic_lights_per_state = dict()
@@ -84,8 +93,10 @@ class Dashboard(object):
         rospy.Subscriber('/image_color', Image, self._set_image)
 
         # current velocity and twist topic
-        # rospy.Subscriber('/current_velocity', TwistStamped, self._set_current_velocity)
-        # rospy.Subscriber('/twist_cmd', TwistStamped, self._set_twist_cmd)
+        rospy.Subscriber('/twist_cmd', TwistStamped, self._set_twist_cmd)
+        rospy.Subscriber('/vehicle/steering_cmd', SteeringCmd, self._set_steering_cmd)
+        rospy.Subscriber('/vehicle/throttle_cmd', ThrottleCmd, self._set_throttle_cmd)
+        rospy.Subscriber('/vehicle/brake_cmd', BrakeCmd, self._set_brake_cmd)
 
         # Load traffic light config
         config_string = rospy.get_param("/traffic_light_config")
@@ -154,9 +165,9 @@ class Dashboard(object):
             x = int(self._current_pose.pose.position.x)
             y = int(self._screen_dimensions[1] - (self._current_pose.pose.position.y - 1000.))
             cv2.circle(self._dashboard_img, (x, y), 10, self._ego_color, -1)
-            self._put_position_to_circle((x, y), inside=False, showLine=True)
+            self._put_position_to_circle((x, y), inside=False, showline=True)
 
-    def _put_position_to_circle(self, coordinates, inside=True, showLine=False):
+    def _put_position_to_circle(self, coordinates, inside=True, showline=False):
         center = (self._screen_dimensions[0] // 2, self._screen_dimensions[0] - 1000.)
         text = "({}/{})".format(coordinates[0], coordinates[1])
         r = (center[0]-coordinates[0], center[1]-coordinates[1])
@@ -171,7 +182,7 @@ class Dashboard(object):
         ap = (dist * e_r[0], dist * e_r[1])
         p = (int(coordinates[0] + ap[0]), int(coordinates[1] + ap[1]))
 
-        if showLine:
+        if showline:
             cv2.line(self._dashboard_img, (int(coordinates[0]), int(coordinates[1])), p, self._base_waypoints_color, 3)
 
         cv2.putText(self._dashboard_img, text, p, cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
@@ -211,7 +222,7 @@ class Dashboard(object):
             # draw polylines of the track
             cv2.polylines(self._dashboard_img, vertices, False, self._final_waypoints_color, 8)
 
-    def _write_next_traffic_light(self, size=15):
+    def _write_next_traffic_light(self, ref_height=15):
         if self._current_pose is not None and self._base_waypoints is not None and self._lights is not None and self._stop_line_positions is not None:
             # Get car position and its distance to next base waypoint
             index_car_position, distance_to_waypoint = utils.get_next(self._current_pose, self._base_waypoints)
@@ -221,25 +232,63 @@ class Dashboard(object):
             index_next_tl, distance_next_tl = utils.get_next(self._current_pose, self._lights)
             next_tl = self._lights[index_next_tl].pose.pose
 
-            dist_tl_text = "Traffic Light #{} comes up in {} m".format(index_next_tl, distance_next_tl)
-            size1, _ = self._get_text_size(dist_tl_text)
-            size += 15 + size1[1]
-            cv2.putText(self._dashboard_img, dist_tl_text, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
-            cv2.putText(self._dashboard_img, dist_tl_text, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+            ref_height = self._write_text("Traffic Light #{} comes up in {} m".format(index_next_tl, distance_next_tl), ref_height + 15)
 
             # Find closest stop line to traffic light
             index_next_stop_line = utils.get_closest_stop_line(next_tl, self._stop_line_positions)
             next_stop_line = self._stop_line_positions[index_next_stop_line]
             distance_next_stop_line = utils.distance2d((car_position.position.x, car_position.position.y), next_stop_line)
 
-            dist_hl_text = "Stop Line for Traffic Light #{} in {} m".format(index_next_tl, distance_next_stop_line)
-            size2, _ = self._get_text_size(dist_hl_text)
-            size += 15 + size2[1]
-            cv2.putText(self._dashboard_img, dist_hl_text, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
-            cv2.putText(self._dashboard_img, dist_hl_text, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+            ref_height = self._write_text("Stop Line for Traffic Light #{} in {} m".format(index_next_tl, distance_next_stop_line), ref_height + 15)
 
-            return size
-        return size
+        return ref_height
+
+    def _write_text(self, text, ref_height=15):
+        size, _ = self._get_text_size(text)
+        ref_height += size[1]
+        cv2.putText(self._dashboard_img, text, (50, ref_height), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
+        cv2.putText(self._dashboard_img, text, (50, ref_height), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+
+        return ref_height
+
+    def _write_twist_info(self, ref_height=15):
+        throttle_precent = 0.0
+        brake_precent = 0.0
+        steer_angle = 0.0
+
+        if self._throttle_cmd is not None and self._brake_cmd is not None and self._steering_cmd is not None:
+            throttle_precent = self._throttle_cmd.pedal_cmd
+            brake_precent = self._brake_cmd.pedal_cmd
+            steer_angle = self._steering_cmd.steering_wheel_angle_cmd
+
+        # make column bar gauge
+        figure = Figure()
+        canvas = FigureCanvas(figure)
+        axes = figure.add_subplot(1, 1, 1, axisbg='black')
+        # fig, ax = plt.subplots()
+        axes.bar(1, throttle_precent * 100, 0.7, color='g')
+        axes.bar(2, brake_precent * 100, 0.7, color='r')
+        figure.patch.set_visible(False)
+        axes.axis('off')
+        # axes.set_facecolor(self._background_color)
+        canvas.draw()
+        renderer = canvas.get_renderer()
+        raw = renderer.tostring_rgb()
+        raw = np.fromstring(raw, dtype=np.uint8, sep='')
+        raw = raw.reshape(canvas.get_width_height()[::-1] + (3,))
+        ref_height += 15
+        self._dashboard_img[ref_height:ref_height+480, self._screen_dimensions[0]//3:self._screen_dimensions[0]//3+640] = raw
+        plt.clf()
+
+        ref_height = self._write_text("Throttle: {}".format(throttle_precent * 100), ref_height + 15)
+        ref_height = self._write_text("Brake: {}".format(brake_precent * 100), ref_height + 15)
+        ref_height = self._write_text("Steering Angle: {}".format(steer_angle), ref_height + 15)
+
+        # if self._twist_cmd is not None:
+        # print important twist values
+
+        return ref_height
+
 
     def _loop(self):
         # 1Hz should be enough
@@ -278,13 +327,11 @@ class Dashboard(object):
                 self._draw_final_waypoints()
 
                 # test text
-                header = "Happy Robots"
-                size, _ = self._get_text_size(header)
-                size = size[1] + 15
-                cv2.putText(self._dashboard_img, header, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
-                cv2.putText(self._dashboard_img, header, (50, size), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+                ref_height = self._write_text("Happy Robots")
 
-                baseline = self._write_next_traffic_light(size)
+                ref_height = self._write_next_traffic_light(ref_height)
+
+                ref_height = self._write_twist_info(ref_height)
 
                 # update screen with new image and refresh window
                 self._update_screen()
@@ -321,20 +368,16 @@ class Dashboard(object):
 
     def _set_current_pose(self, msg):
         self._current_pose = msg
-        rospy.loginfo(
-            "Received new position: x={}, y={}".format(self._current_pose.pose.position.x, self._current_pose.pose.position.y))
 
     def _set_base_waypoints(self, lane):
         if self._base_waypoints is None:
             self._base_waypoints = lane.waypoints
-            rospy.logwarn("Waypoints loaded... found {}.".format(len(self._base_waypoints)))
             # draws track image right after setting waypoints
             # this way it only has to be done once
             self._draw_track()
 
     def _set_final_waypoints(self, lane):
         self._final_waypoints = lane.waypoints
-        # rospy.logwarn("Final waypoints received! Got: {}".format(len(self._final_waypoints)))
 
     def _set_traffic_waypoints(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
@@ -353,6 +396,15 @@ class Dashboard(object):
     def _set_twist_cmd(self, msg):
         self._twist_cmd = msg
 
+    def _set_steering_cmd(self, msg):
+        self._steering_cmd = msg
+
+    def _set_throttle_cmd(self, msg):
+        self._throttle_cmd = msg
+
+    def _set_brake_cmd(self, msg):
+        self._brake_cmd = msg
+
     def _set_image(self, msg):
         self._image = msg
 
@@ -370,8 +422,8 @@ class Dashboard(object):
             self._traffic_lights_per_state[state_tl].append((x_tl, y_tl, orientation_tl, stamp_tl))
 
     @staticmethod
-    def _get_text_size(text, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=2, thickness=2):
-        return cv2.getTextSize(text, fontFace, fontScale, thickness)
+    def _get_text_size(text, fontface=cv2.FONT_HERSHEY_COMPLEX, fontscale=2, thickness=2):
+        return cv2.getTextSize(text, fontface, fontscale, thickness)
 
 
 if __name__ == '__main__':

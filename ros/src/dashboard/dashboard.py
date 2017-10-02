@@ -212,17 +212,18 @@ class Dashboard(object):
             cv2.polylines(self._dashboard_img, vertices, False, self._final_waypoints_color, 8)
 
     def _write_next_traffic_light(self, baseline):
+        baseline2 = None
         if self._current_pose is not None and self._base_waypoints is not None and self._lights is not None and self._stop_line_positions is not None:
             # Get car position and its distance to next base waypoint
-            index_car_position, distance_to_waypoint = utils.get_next(self._current_pose, self._base_waypoints.waypoints)
-            car_position = self._base_waypoints.waypoints[index_car_position].pose.pose
+            index_car_position, distance_to_waypoint = utils.get_next(self._current_pose, self.waypoints)
+            car_position = self._base_waypoints[index_car_position].pose.pose
 
             # rospy.logerr(self.lights)
             index_next_tl, distance_next_tl = utils.get_next(self._current_pose, self._lights)
             next_tl = self._lights[index_next_tl].pose.pose
 
             dist_tl_text = "Traffic Light #{} comes up in {} m".format(index_next_tl, distance_next_tl)
-            size1, baseline1 = cv2.getTextSize(dist_tl_text)
+            size1, baseline1 = self._get_text_size(dist_tl_text)
             cv2.putText(self._dashboard_img, dist_tl_text, (50, baseline + 15 + size1[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
             cv2.putText(self._dashboard_img, dist_tl_text, (50, baseline + 15 + size1[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
 
@@ -232,7 +233,7 @@ class Dashboard(object):
             distance_next_stop_line = utils.distance2d((car_position.x, car_position.y), next_stop_line)
 
             dist_hl_text = "Stop Line for Traffic Light #{} in {} m".format(index_next_tl, distance_next_stop_line)
-            size2, baseline2 = cv2.getTextSize(dist_hl_text)
+            size2, baseline2 = self._get_text_size(dist_hl_text)
             cv2.putText(self._dashboard_img, dist_hl_text, (50, baseline1 + 15 + size2[1]), cv2.FONT_HERSHEY_COMPLEX, 2,
                         self._text_shadow_color, 4)
             cv2.putText(self._dashboard_img, dist_hl_text, (50, baseline1 + 15 + size2[1]), cv2.FONT_HERSHEY_COMPLEX, 2,
@@ -278,7 +279,7 @@ class Dashboard(object):
 
                 # test text
                 header = "Happy Robots"
-                size, baseline = cv2.getTextSize(header)
+                size, baseline = self._get_text_size(header)
                 cv2.putText(self._dashboard_img, header, (50, 15 + size[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
                 cv2.putText(self._dashboard_img, header, (50, 15 + size[1]), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
 

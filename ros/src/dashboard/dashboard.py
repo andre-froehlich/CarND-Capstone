@@ -316,7 +316,7 @@ class Dashboard(object):
 
     def _print_steering(self):
         """
-        draws a simple half cicle and the steering value in dagrees to display steering
+        draws a simple half cicle and the steering value in degrees to display steering
         """
         # half circle
         radius = 100

@@ -4,7 +4,7 @@ import numpy as np
 import yaml
 from ast import literal_eval as make_tuple
 from cv_bridge import CvBridge
-from math import sqrt
+from math import sqrt, pi
 
 import cv2
 import pygame
@@ -205,10 +205,8 @@ class Dashboard(object):
         text = "DBW"
         size, baseline = self._get_text_size(text)
         radius = 20
-        cv2.putText(self._dashboard_img, text, (self._screen_dimensions[0] - (size[0] + radius + 50), size[1] + 10),
-                    cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
-        cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius // 2 + 50), baseline + (size[1] // 2)),
-                   radius, state, -1)
+        cv2.putText(self._dashboard_img, text, (self._screen_dimensions[0] - (size[0] + 15), size[1] + 15), cv2.FONT_HERSHEY_COMPLEX, 1, self._text_color, 2)
+        cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius + 15), size[1] + radius), radius, state, -1)
 
     def _draw_final_waypoints(self):
         if self._final_waypoints is not None and self._dashboard_img is not None:
@@ -259,43 +257,36 @@ class Dashboard(object):
             throttle_precent = self._throttle_cmd.pedal_cmd
             brake_precent = self._brake_cmd.pedal_cmd
 
-        # # make column bar gauge
-        # figure = Figure()
-        # canvas = FigureCanvas(figure)
-        # axes = figure.add_subplot(1, 1, 1, axisbg='black')
-        # # fig, ax = plt.subplots()
-        # axes.bar(1, throttle_precent * 100, 0.7, color='g')
-        # axes.bar(2, brake_precent * 100, 0.7, color='r')
-        # figure.patch.set_visible(False)
-        # axes.axis('off')
-        # # axes.set_facecolor(self._background_color)
-        # canvas.draw()
-        # renderer = canvas.get_renderer()
-        # raw = renderer.tostring_rgb()
-        # raw = np.fromstring(raw, dtype=np.uint8, sep='')
-        # raw = raw.reshape(canvas.get_width_height()[::-1] + (3,))
-        # ref_height += 15
-        # self._dashboard_img[ref_height:ref_height+480, self._screen_dimensions[0]//3:self._screen_dimensions[0]//3+640] = raw
-        # plt.clf()
-
         # throttle gauge border
-        cv2.rectangle(self._dashboard_img, (1900, 100), (2000, 200), self._text_color, thickness=2)
+        cv2.rectangle(self._dashboard_img, (1800, 100), (1900, 200), self._text_color, thickness=2)
         # throttle percentage
-        cv2.rectangle(self._dashboard_img, (1900, int(200-throttle_precent*100)), (2000, 200), GREEN, thickness=-1)
+        cv2.rectangle(self._dashboard_img, (1800, int(200-throttle_precent*100)), (1900, 200), GREEN, thickness=-1)
 
         # brake gauge border
-        cv2.rectangle(self._dashboard_img, (2100, 100), (2200, 200), self._text_color, thickness=2)
+        cv2.rectangle(self._dashboard_img, (2000, 100), (2100, 200), self._text_color, thickness=2)
         # brake percentage
-        cv2.rectangle(self._dashboard_img, (2100, int(200-brake_precent*100)), (2200, 200), RED, thickness=-1)
+        cv2.rectangle(self._dashboard_img, (2000, int(200-brake_precent*100)), (2100, 200), RED, thickness=-1)
 
-        self._write_text("{0:.2f}".format(throttle_precent * 100), ref_width=1900, ref_height=15)
-        self._write_text("Th", ref_width=1900, ref_height=200)
-        self._write_text("{0:.2f}".format(brake_precent * 100), ref_width=2100, ref_height=15)
-        self._write_text("B", ref_width=2100, ref_height=200)
+        self._write_text("{0:.1f}".format(throttle_precent * 100), ref_width=1750, ref_height=15)
+        self._write_text("Th", ref_width=1800, ref_height=205)
+        self._write_text("{0:.2f}".format(brake_precent * 100), ref_width=1950, ref_height=15)
+        self._write_text("B", ref_width=2000, ref_height=205)
 
     def _print_steering(self):
         # TODO: implement steering gauge
-        pass
+        # half circle
+        radius = 100
+        center = (1650, 200)
+        axes = (radius, radius)
+        angle = 0
+        start_angle = 180
+        end_angle = 360
+        cv2.ellipse(self._dashboard_img, center, axes, angle, start_angle, end_angle, self._text_color, 10)
+        cv2.circle(self._dashboard_img, (1650, 100), 10, BLUE, -1)
+        if self._steering_cmd is not None:
+            angle = self._steering_cmd.steering_wheel_angle_cmd
+            angle = -1 * angle * 180 / pi
+            cv2.ellipse(self._dashboard_img, center, axes, -90, 0, angle, RED, -1)
 
     def _loop(self):
         # 1Hz is not enough better make it 5
@@ -351,7 +342,7 @@ class Dashboard(object):
 
                 # more sophisticate gauge for steering value
                 # from twist_controller
-                # self._print_steering()
+                self._print_steering()
 
                 # update screen with new image and refresh window
                 self._update_screen()

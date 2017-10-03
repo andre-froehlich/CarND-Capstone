@@ -232,67 +232,74 @@ class Dashboard(object):
             index_next_tl, distance_next_tl = utils.get_next(self._current_pose, self._lights)
             next_tl = self._lights[index_next_tl].pose.pose
 
-            ref_height = self._write_text("Traffic Light #{} comes up in {} m".format(index_next_tl, distance_next_tl), ref_height + 15)
+            ref_height = self._write_text("Traffic Light #{0} comes up in {1:.2f} m".format(index_next_tl, round(distance_next_tl,2)), ref_height=(ref_height + 15))
 
             # Find closest stop line to traffic light
             index_next_stop_line = utils.get_closest_stop_line(next_tl, self._stop_line_positions)
             next_stop_line = self._stop_line_positions[index_next_stop_line]
             distance_next_stop_line = utils.distance2d((car_position.position.x, car_position.position.y), next_stop_line)
 
-            ref_height = self._write_text("Stop Line for Traffic Light #{} in {} m".format(index_next_tl, distance_next_stop_line), ref_height + 15)
+            ref_height = self._write_text("Stop Line for Traffic Light #{0} in {1:.2f} m".format(index_next_tl, round(distance_next_stop_line,2)), ref_height=(ref_height + 15))
 
         return ref_height
 
-    def _write_text(self, text, ref_height=15):
+    def _write_text(self, text, ref_width=50, ref_height=15, fontsize=2, thickness=2):
         size, _ = self._get_text_size(text)
         ref_height += size[1]
-        cv2.putText(self._dashboard_img, text, (50, ref_height), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
-        cv2.putText(self._dashboard_img, text, (50, ref_height), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+        cv2.putText(self._dashboard_img, text, (ref_width, ref_height), cv2.FONT_HERSHEY_COMPLEX, fontsize, self._text_shadow_color, thickness+2)
+        cv2.putText(self._dashboard_img, text, (ref_width, ref_height), cv2.FONT_HERSHEY_COMPLEX, fontsize, self._text_color, thickness)
 
         return ref_height
 
-    def _write_twist_info(self, ref_height=15):
+    def _write_twist_info(self):
         throttle_precent = 0.0
         brake_precent = 0.0
-        steer_angle = 0.0
 
-        if self._throttle_cmd is not None and self._brake_cmd is not None and self._steering_cmd is not None:
+        if self._throttle_cmd is not None and self._brake_cmd is not None:
             throttle_precent = self._throttle_cmd.pedal_cmd
             brake_precent = self._brake_cmd.pedal_cmd
-            steer_angle = self._steering_cmd.steering_wheel_angle_cmd
 
-        # make column bar gauge
-        figure = Figure()
-        canvas = FigureCanvas(figure)
-        axes = figure.add_subplot(1, 1, 1, axisbg='black')
-        # fig, ax = plt.subplots()
-        axes.bar(1, throttle_precent * 100, 0.7, color='g')
-        axes.bar(2, brake_precent * 100, 0.7, color='r')
-        figure.patch.set_visible(False)
-        axes.axis('off')
-        # axes.set_facecolor(self._background_color)
-        canvas.draw()
-        renderer = canvas.get_renderer()
-        raw = renderer.tostring_rgb()
-        raw = np.fromstring(raw, dtype=np.uint8, sep='')
-        raw = raw.reshape(canvas.get_width_height()[::-1] + (3,))
-        ref_height += 15
-        self._dashboard_img[ref_height:ref_height+480, self._screen_dimensions[0]//3:self._screen_dimensions[0]//3+640] = raw
-        plt.clf()
+        # # make column bar gauge
+        # figure = Figure()
+        # canvas = FigureCanvas(figure)
+        # axes = figure.add_subplot(1, 1, 1, axisbg='black')
+        # # fig, ax = plt.subplots()
+        # axes.bar(1, throttle_precent * 100, 0.7, color='g')
+        # axes.bar(2, brake_precent * 100, 0.7, color='r')
+        # figure.patch.set_visible(False)
+        # axes.axis('off')
+        # # axes.set_facecolor(self._background_color)
+        # canvas.draw()
+        # renderer = canvas.get_renderer()
+        # raw = renderer.tostring_rgb()
+        # raw = np.fromstring(raw, dtype=np.uint8, sep='')
+        # raw = raw.reshape(canvas.get_width_height()[::-1] + (3,))
+        # ref_height += 15
+        # self._dashboard_img[ref_height:ref_height+480, self._screen_dimensions[0]//3:self._screen_dimensions[0]//3+640] = raw
+        # plt.clf()
 
-        ref_height = self._write_text("Throttle: {}".format(throttle_precent * 100), ref_height + 15)
-        ref_height = self._write_text("Brake: {}".format(brake_precent * 100), ref_height + 15)
-        ref_height = self._write_text("Steering Angle: {}".format(steer_angle), ref_height + 15)
+        # throttle gauge border
+        cv2.rectangle(self._dashboard_img, (1900, 100), (2000, 200), self._text_color, thickness=2)
+        # throttle percentage
+        cv2.rectangle(self._dashboard_img, (1900, int(200-throttle_precent*100)), (2000, 200), GREEN, thickness=-1)
 
-        # if self._twist_cmd is not None:
-        # print important twist values
+        # brake gauge border
+        cv2.rectangle(self._dashboard_img, (2100, 100), (2200, 200), self._text_color, thickness=2)
+        # brake percentage
+        cv2.rectangle(self._dashboard_img, (2100, int(200-brake_precent*100)), (2200, 200), RED, thickness=-1)
 
-        return ref_height
+        self._write_text("{0:.2f}".format(throttle_precent * 100), ref_width=1900, ref_height=15)
+        self._write_text("Th", ref_width=1900, ref_height=200)
+        self._write_text("{0:.2f}".format(brake_precent * 100), ref_width=2100, ref_height=15)
+        self._write_text("B", ref_width=2100, ref_height=200)
 
+    def _print_steering(self):
+        # TODO: implement steering gauge
+        pass
 
     def _loop(self):
-        # 1Hz should be enough
-        rate = rospy.Rate(1)
+        # 1Hz is not enough better make it 5
+        rate = rospy.Rate(5)
         while not rospy.is_shutdown():
             if self._base_waypoints is not None:
 
@@ -318,20 +325,33 @@ class Dashboard(object):
                 # get copy of track_image
                 self._dashboard_img = np.copy(self._track_image)
 
+                # draw point at current position and coordinates
                 self._draw_current_position()
 
+                # draw position of lights in the color of state
+                # and their coordinates
                 self._draw_traffic_lights()
 
+                # drive by wire enabled in top right-hand corner
                 self._draw_dbw_status()
 
+                # draw available final waypoints on top of track
                 self._draw_final_waypoints()
 
                 # test text
                 ref_height = self._write_text("Happy Robots")
 
+                # puts text on image where the next light is
+                # and its corresponding stop line
                 ref_height = self._write_next_traffic_light(ref_height)
 
-                ref_height = self._write_twist_info(ref_height)
+                # simple bar gauge of brake and throttle value from
+                # twist_controller
+                self._write_twist_info()
+
+                # more sophisticate gauge for steering value
+                # from twist_controller
+                # self._print_steering()
 
                 # update screen with new image and refresh window
                 self._update_screen()

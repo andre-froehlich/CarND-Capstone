@@ -60,7 +60,14 @@ class TLDetector(object):
             rospy.logwarn("Collecting training data!")
             self.state_file = open("../../../training_data/state.txt", "w")
 
-        rospy.spin()
+        self.loop()
+
+    def loop(self):
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            # For testing assume waypoint with index 100 is stop line for a traffic light with red light
+            self.upcoming_red_light_pub.publish(600)
+            rate.sleep()
 
     def pose_cb(self, msg):
         self.pose = msg
@@ -131,9 +138,10 @@ class TLDetector(object):
             self.last_state = self.state
             light_wp = light_wp if state == TrafficLight.RED else -1
             self.last_wp = light_wp
-            self.upcoming_red_light_pub.publish(Int32(light_wp))
+            # self.upcoming_red_light_pub.publish(Int32(light_wp))
         else:
-            self.upcoming_red_light_pub.publish(Int32(self.last_wp))
+            pass
+            # self.upcoming_red_light_pub.publish(Int32(self.last_wp))
         self.state_count += 1
 
     def project_to_image_plane(self, point_in_world):

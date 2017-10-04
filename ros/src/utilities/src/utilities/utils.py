@@ -123,6 +123,8 @@ def check_is_ahead(pose_1, pose_2):
     else:
         return True
 
+def dist(pose_1, pose_2):
+    return math.sqrt(squared_dist(pose_1, pose_2))
 
 def squared_dist(pose_1, pose_2):
     dx = pose_1.pose.position.x - pose_2.pose.position.x
@@ -142,7 +144,7 @@ def distance(waypoints, wp1, wp2):
 
 transform_listener = tf.TransformListener()
 
-def project_to_image_plane(point_in_world, fx=1350.0, fy=1350.0, image_width=800, image_height=600):
+def project_to_image_plane(point_in_world, fx=2574.0, fy=2744.0, image_width=800, image_height=600):
     """Project point from 3D world coordinates to 2D camera image location
 
     Args:
@@ -195,3 +197,89 @@ def project_to_image_plane(point_in_world, fx=1350.0, fy=1350.0, image_width=800
 
     else:
         return None
+
+def normalize_angle(angle):
+    while angle < 0:
+        angle += 2 * math.pi
+    while angle > 2 * math.pi:
+        angle -= 2 * math.pi
+    return angle
+
+def get_angles(pose_1, pose_2):
+    # Get roll, pitch, yaw of pose_1
+    quaternion = (pose_1.orientation.x,
+                  pose_1.orientation.y,
+                  pose_1.orientation.z,
+                  pose_1.orientation.w)
+    euler = tf.transformations.euler_from_quaternion(quaternion)
+    rospy.logerr(euler)
+    pose_1_roll = normalize_angle(euler[0])
+    pose_1_pitch = normalize_angle(euler[1])
+    pose_1_yaw = normalize_angle(euler[2])
+
+    # Distances in x, y, z
+    dx = pose_2.position.x - pose_1.position.x
+    dy = pose_2.position.y - pose_1.position.y
+    dz = pose_2.position.z - pose_1.position.z
+
+    # roll between pose_1 and pose_2, roll really needed?
+    angle_roll = None
+    if dy == 0:
+        if dz >= 0:
+            angle_roll = 0.5 * math.pi
+        else:
+            angle_roll = 1.5 * math.pi
+    elif dy > 0.0 and dz >= 0.0:
+        angle_roll = math.atan(dz / dy)
+    elif dy > 0.0 >= dz:
+        angle_roll = 2 * math.pi - math.atan(-dz / dy)
+    elif dy < 0.0 and dz <= 0.0:
+        angle_roll = math.pi + math.atan(dz / dy)
+    else:
+        angle_roll = math.pi - math.atan(-dz / dy)
+    delta_roll = angle_roll - pose_1_roll
+
+    # pitch between pose_1 and pose_2
+    angle_pitch = None
+    if dx == 0:
+        if dz >= 0:
+            angle_pitch = 0.5 * math.pi
+        else:
+            angle_pitch = 1.5 * math.pi
+    elif dx > 0.0 and dz >= 0.0:
+        angle_pitch = math.atan(dz / dx)
+    elif dx > 0.0 >= dz:
+        angle_pitch = 2 * math.pi - math.atan(-dz / dx)
+    elif dx < 0.0 and dz <= 0.0:
+        angle_pitch = math.pi + math.atan(dz / dx)
+    else:
+        angle_pitch = math.pi - math.atan(-dz / dx)
+    delta_pitch = angle_pitch - pose_1_pitch
+
+    # yaw between pose_1 and pose_2
+    angle_yaw = None
+    if dx == 0:
+        if dy >= 0:
+            angle_yaw = 0.5 * math.pi
+        else:
+            angle_yaw = 1.5 * math.pi
+    elif dx > 0.0 and dy >= 0.0:
+        angle_yaw = math.atan(dy / dx)
+    elif dx > 0.0 >= dy:
+        angle_yaw = 2 * math.pi - math.atan(-dy / dx)
+    elif dx < 0.0 and dy <= 0.0:
+        angle_yaw = math.pi + math.atan(dy / dx)
+    else:
+        angle_yaw = math.pi - math.atan(-dy / dx)
+    delta_yaw = angle_yaw - pose_1_yaw
+
+    return delta_roll, delta_pitch, delta_yaw
+
+def get_img_coordinate(pose_1, pose_2):
+    delta_roll, delta_pitch, delta_yaw = get_angles(pose_1, pose_2)
+    rospy.logerr("roll={}, pitch={}, yaw={}".format(delta_roll, delta_pitch, delta_yaw))
+
+    return delta_roll, delta_pitch, delta_yaw
+
+
+

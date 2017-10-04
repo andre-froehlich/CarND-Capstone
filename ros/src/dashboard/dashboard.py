@@ -3,7 +3,7 @@
 import cv2
 import yaml
 import numpy as np
-from math import sqrt
+from math import sqrt, tan
 import pygame
 import rospy
 from ast import literal_eval as make_tuple
@@ -263,16 +263,48 @@ class Dashboard(object):
         else:
             time = rospy.Time.now().to_nsec()
             cv_image = self._bridge.imgmsg_to_cv2(self._image, "bgr8")
-            cv2.imwrite("../../../training_data/img_time{:21d}_state{:1d}.png".format(time, state), cv_image)
+
             rospy.logwarn("Saved screenshot with state {} at time {}...".format(state, time))
 
             index, dist = utils.get_next(self._current_pose, self._lights)
             traffic_light = self._lights[index]
 
-            x, y = utils.project_to_image_plane(traffic_light.pose.pose.position)
-
             rospy.logwarn("TL index={}".format(index))
-            rospy.logwarn("Pixel value for traffic light: x={}, y={}".format(x, y))
+
+
+            delta_roll, delta_pitch, delta_yaw = utils.get_img_coordinate(self._current_pose.pose, traffic_light.pose.pose)
+
+            rospy.logwarn(tan(delta_yaw))
+
+            x = int(100 * tan(delta_yaw)) + 400
+            y = int(200 * tan(delta_pitch)) + 300
+            rospy.logwarn("X=" + str(x) + ", Y=" + str(y))
+            cv2.circle(cv_image, (x, y), 5, WHITE, -1)
+
+            x = int(100 * tan(delta_yaw)) + 400
+            y = int(300 * tan(delta_pitch)) + 300
+            rospy.logwarn("X=" + str(x) + ", Y=" + str(y))
+            cv2.circle(cv_image, (x, y), 5, GREY, -1)
+
+            x = int(100 * tan(delta_yaw)) + 400
+            y = int(400 * tan(delta_pitch)) + 300
+            rospy.logwarn("X=" + str(x) + ", Y=" + str(y))
+            cv2.circle(cv_image, (x, y), 5, BLACK, -1)
+
+
+            cv2.imwrite("../../../training_data/img_time{:21d}_state{:1d}.png".format(time, state), cv_image)
+
+            # fx = self._config['camera_info']['focal_length_x']
+            # fy = self._config['camera_info']['focal_length_y']
+            #
+            # x, y = utils.project_to_image_plane(traffic_light.pose.pose.position, fx, fy)
+            # rospy.logwarn("Pixel value for traffic light: x={}, y={}".format(x, y))
+
+            # x, y = utils.project_to_image_plane(traffic_light.pose.pose.position, 250, 75)
+            # rospy.logwarn("Pixel value for traffic light: x={}, y={}".format(x, y))
+            #
+            # x, y = utils.project_to_image_plane(traffic_light.pose.pose.position, 250, 100)
+            # rospy.logwarn("Pixel value for traffic light: x={}, y={}".format(x, y))
 
 
     def close(self):

@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 
-import cv2
-import yaml
 import numpy as np
-from math import sqrt, tan
+
+import yaml
+from ast import literal_eval as make_tuple
+from cv_bridge import CvBridge
+from math import sqrt, pi, tan
+import cv2
+
 import pygame
 import rospy
-from ast import literal_eval as make_tuple
+from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd
 from geometry_msgs.msg import PoseStamped, TwistStamped
-from styx_msgs.msg import Lane, Waypoint, TrafficLightArray, TrafficLight
-from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
+from std_msgs.msg import Bool
+from styx_msgs.msg import Lane, TrafficLightArray
 from utilities import utils
 
 # couple of colors
@@ -43,6 +46,9 @@ class Dashboard(object):
     _dbw_enabled = False
     _current_velocity = None
     _twist_cmd = None
+    _steering_cmd = None
+    _brake_cmd = None
+    _throttle_cmd = None
 
     # traffic lights per state
     _traffic_lights_per_state = dict()
@@ -55,6 +61,9 @@ class Dashboard(object):
 
     _image = None
     _bridge = CvBridge()
+
+    _config = None
+    _stop_line_positions = None
 
     def __init__(self):
         rospy.init_node('dashboard_node')
@@ -81,12 +90,17 @@ class Dashboard(object):
         rospy.Subscriber('/image_color', Image, self._set_image)
 
         # current velocity and twist topic
-        # rospy.Subscriber('/current_velocity', TwistStamped, self._set_current_velocity)
-        # rospy.Subscriber('/twist_cmd', TwistStamped, self._set_twist_cmd)
+        rospy.Subscriber('/twist_cmd', TwistStamped, self._set_twist_cmd)
+        rospy.Subscriber('/vehicle/steering_cmd', SteeringCmd, self._set_steering_cmd)
+        rospy.Subscriber('/vehicle/throttle_cmd', ThrottleCmd, self._set_throttle_cmd)
+        rospy.Subscriber('/vehicle/brake_cmd', BrakeCmd, self._set_brake_cmd)
 
         # Load traffic light config
         config_string = rospy.get_param("/traffic_light_config")
         self._config = yaml.load(config_string)
+
+        # List of positions that correspond to the line to stop in front of for a given intersection
+        self._stop_line_positions = self._config['stop_line_positions']
 
         # initialize screen with given parameters from dashboard.launch
         self._init_screen()
@@ -145,69 +159,183 @@ class Dashboard(object):
 
     def _draw_current_position(self):
         if self._current_pose is not None:
+            # get coordinates
             x = int(self._current_pose.pose.position.x)
             y = int(self._screen_dimensions[1] - (self._current_pose.pose.position.y - 1000.))
+            # draw filled circle at position
             cv2.circle(self._dashboard_img, (x, y), 10, self._ego_color, -1)
-            self._put_position_to_circle((x, y), inside=False, showLine=True)
+            # print coordinates to point
+            self._put_position_to_circle((x, y), inside=False, showline=True)
 
-    def _put_position_to_circle(self, coordinates, inside=True, showLine=False):
-        center = (self._screen_dimensions[0] // 2, self._screen_dimensions[0] - 1000.)
+    def _put_position_to_circle(self, coordinates, inside=True, showline=False):
+        # get vector to center of track image
+        center = (self._screen_dimensions[0] // 2, self._screen_dimensions[1] - 750.)
         text = "({}/{})".format(coordinates[0], coordinates[1])
-        r = (center[0]-coordinates[0], center[1]-coordinates[1])
-        mag = sqrt(r[0]**2 + r[1]**2)
-        e_r = (r[0]/mag, r[1]/mag)
+        r = (center[0] - coordinates[0], center[1] - coordinates[1])
+        mag = sqrt(r[0] ** 2 + r[1] ** 2)
+        e_r = (r[0] / mag, r[1] / mag)
 
+        # compute distance from point to text
         dist = 150. if inside else -100.
         if coordinates[0] > 2000.:
             size, _ = self._get_text_size(text)
             dist = size[0] + 50
 
+        # compute new point vor text
         ap = (dist * e_r[0], dist * e_r[1])
         p = (int(coordinates[0] + ap[0]), int(coordinates[1] + ap[1]))
 
-        if showLine:
+        if showline:
+            # connects point with text
             cv2.line(self._dashboard_img, (int(coordinates[0]), int(coordinates[1])), p, self._base_waypoints_color, 3)
 
+        # print text
         cv2.putText(self._dashboard_img, text, p, cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
         cv2.putText(self._dashboard_img, text, p, cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
 
     def _draw_traffic_lights(self):
         if self._traffic_lights_per_state is not None:
+            # iterate through traffic light ...
             for key, val in self._traffic_lights_per_state.iteritems():
+                # ... translate state into color ...
                 color = TRAFFIC_STATES[key]
                 for tl in val:
+                    # ... get coordinates ...
                     x = int(tl[0])
                     y = int(self._screen_dimensions[1] - (tl[1] - 1000.))
+                    # ... draw circle and print text
                     cv2.circle(self._dashboard_img, (x, y), 15, color, -1)
                     self._put_position_to_circle((x, y))
 
     def _draw_dbw_status(self):
+        """
+        just prints 'DBW' and a green or red point depending on the status
+        """
         state = RED
         if self._dbw_enabled:
             state = GREEN
         text = "DBW"
         size, baseline = self._get_text_size(text)
         radius = 20
-        cv2.putText(self._dashboard_img, text, (self._screen_dimensions[0] - (size[0] + radius + 50), size[1] + 10),
-                    cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
-        cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius // 2 + 50), baseline + (size[1] // 2)),
-                   radius, state, -1)
+        cv2.putText(self._dashboard_img, text, (self._screen_dimensions[0] - (size[0] + 15), size[1] + 15),
+                    cv2.FONT_HERSHEY_COMPLEX, 1, self._text_color, 2)
+        cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius + 15), size[1] + radius), radius, state,
+                   -1)
 
     def _draw_final_waypoints(self):
+        """
+            draws a polyline according to the final_waypoints over the base track
+        """
         if self._final_waypoints is not None and self._dashboard_img is not None:
             xs = list()
             ys = list()
+            # iterate final waypoints ...
             for wp in self._final_waypoints:
                 xs.append(wp.pose.pose.position.x)
                 #  normalize y values
                 ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
+            # stack them as vertices
             vertices = [np.column_stack((xs, ys)).astype(np.int32)]
             # draw polylines of the track
             cv2.polylines(self._dashboard_img, vertices, False, self._final_waypoints_color, 8)
 
+    def _write_next_traffic_light(self, margin_top=15):
+        """
+        prints the distance to the next traffic light rounded to 2 decimal
+        :param margin_top: to calculate the margin to the top
+        :return margin_top: last margin used in this method
+        """
+        if self._current_pose is not None and self._base_waypoints is not None and self._lights is not None \
+                and self._stop_line_positions is not None:
+            # Get car position and its distance to next base waypoint
+            index_car_position, distance_to_waypoint = utils.get_next(self._current_pose, self._base_waypoints)
+            car_position = self._base_waypoints[index_car_position].pose.pose
+
+            # rospy.logerr(self.lights)
+            index_next_tl, distance_next_tl = utils.get_next(self._current_pose, self._lights)
+            next_tl = self._lights[index_next_tl].pose.pose
+
+            margin_top = self._write_text(
+                "Traffic Light #{0} comes up in {1:.2f} m".format(index_next_tl, round(distance_next_tl, 2)),
+                margin_top=(margin_top + 15))
+
+            # Find closest stop line to traffic light
+            index_next_stop_line = utils.get_closest_stop_line(next_tl, self._stop_line_positions)
+            next_stop_line = self._stop_line_positions[index_next_stop_line]
+            distance_next_stop_line = utils.distance2d((car_position.position.x, car_position.position.y),
+                                                       next_stop_line)
+
+            margin_top = self._write_text("Stop Line for Traffic Light #{0} in {1:.2f} m".format(index_next_tl, round(
+                distance_next_stop_line, 2)), margin_top=(margin_top + 15))
+
+        return margin_top
+
+    def _write_text(self, text, margin_left=50, margin_top=15, fontsize=2, thickness=2):
+        """
+        helper function to print text on image
+        :param text:
+        :param margin_left:
+        :param margin_top:
+        :param fontsize:
+        :param thickness:
+        :return: margin_top
+        """
+        size, _ = self._get_text_size(text)
+        margin_top += size[1]
+        cv2.putText(self._dashboard_img, text, (margin_left, margin_top), cv2.FONT_HERSHEY_COMPLEX, fontsize,
+                    self._text_shadow_color, thickness + 2)
+        cv2.putText(self._dashboard_img, text, (margin_left, margin_top), cv2.FONT_HERSHEY_COMPLEX, fontsize,
+                    self._text_color, thickness)
+
+        return margin_top
+
+    def _write_twist_info(self):
+        """
+        plots two simple bar gauges to display throttle and brake percentage
+        """
+        throttle_precent = 0.0
+        brake_precent = 0.0
+
+        if self._throttle_cmd is not None and self._brake_cmd is not None:
+            throttle_precent = self._throttle_cmd.pedal_cmd
+            brake_precent = self._brake_cmd.pedal_cmd
+
+        # throttle gauge border
+        cv2.rectangle(self._dashboard_img, (1800, 100), (1900, 200), self._text_color, thickness=2)
+        # throttle percentage
+        cv2.rectangle(self._dashboard_img, (1800, int(200 - throttle_precent * 100)), (1900, 200), GREEN, thickness=-1)
+
+        # brake gauge border
+        cv2.rectangle(self._dashboard_img, (2000, 100), (2100, 200), self._text_color, thickness=2)
+        # brake percentage
+        cv2.rectangle(self._dashboard_img, (2000, int(200 - brake_precent * 100)), (2100, 200), RED, thickness=-1)
+
+        self._write_text("{0:.1f}".format(throttle_precent * 100), margin_left=1750, margin_top=15)
+        self._write_text("Th", margin_left=1800, margin_top=205)
+        self._write_text("{0:.2f}".format(brake_precent * 100), margin_left=1950, margin_top=15)
+        self._write_text("B", margin_left=2000, margin_top=205)
+
+    def _print_steering(self):
+        """
+        draws a simple half cicle and the steering value in degrees to display steering
+        """
+        # half circle
+        radius = 100
+        center = (1650, 200)
+        axes = (radius, radius)
+        angle = 0
+        start_angle = 180
+        end_angle = 360
+        cv2.ellipse(self._dashboard_img, center, axes, angle, start_angle, end_angle, self._text_color, 10)
+        cv2.circle(self._dashboard_img, (1650, 100), 10, BLUE, -1)
+        if self._steering_cmd is not None:
+            angle = self._steering_cmd.steering_wheel_angle_cmd
+            angle = -1 * angle * 180 / pi
+            cv2.ellipse(self._dashboard_img, center, axes, -90, 0, angle, RED, -1)
+
     def _loop(self):
-        # 1Hz should be enough
-        rate = rospy.Rate(1)
+        # 1Hz is not enough better make it 5
+        rate = rospy.Rate(5)
         while not rospy.is_shutdown():
             if self._base_waypoints is not None:
 
@@ -215,36 +343,51 @@ class Dashboard(object):
                 if pygame.key.get_focused():
                     key = pygame.key.get_pressed()
 
-                    if (key[pygame.K_ESCAPE]):
+                    if key[pygame.K_ESCAPE]:
                         self.close()
 
-                    if (key[pygame.K_0]):
+                    if key[pygame.K_0]:
                         self._save_image(0)
 
-                    if (key[pygame.K_1]):
+                    if key[pygame.K_1]:
                         self._save_image(1)
 
-                    if (key[pygame.K_2]):
+                    if key[pygame.K_2]:
                         self._save_image(2)
 
-                    if (key[pygame.K_4]):
+                    if key[pygame.K_4]:
                         self._save_image(4)
 
                 # get copy of track_image
                 self._dashboard_img = np.copy(self._track_image)
 
+                # draw point at current position and coordinates
                 self._draw_current_position()
 
+                # draw position of lights in the color of state
+                # and their coordinates
                 self._draw_traffic_lights()
 
+                # drive by wire enabled in top right-hand corner
                 self._draw_dbw_status()
 
+                # draw available final waypoints on top of track
                 self._draw_final_waypoints()
 
                 # test text
-                header = "Happy Robots"
-                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_shadow_color, 4)
-                cv2.putText(self._dashboard_img, header, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, self._text_color, 2)
+                margin_top = self._write_text("Happy Robots")
+
+                # puts text on image where the next light is
+                # and its corresponding stop line
+                margin_top = self._write_next_traffic_light(margin_top)
+
+                # simple bar gauge of brake and throttle value from
+                # twist_controller
+                self._write_twist_info()
+
+                # more sophisticate gauge for steering value
+                # from twist_controller
+                self._print_steering()
 
                 # update screen with new image and refresh window
                 self._update_screen()
@@ -306,27 +449,30 @@ class Dashboard(object):
             # x, y = utils.project_to_image_plane(traffic_light.pose.pose.position, 250, 100)
             # rospy.logwarn("Pixel value for traffic light: x={}, y={}".format(x, y))
 
-
-    def close(self):
+    @staticmethod
+    def close():
+        """
+        makes it faster to shutdown ros
+        """
         rospy.logwarn("close")
         pygame.quit()
 
     def _set_current_pose(self, msg):
         self._current_pose = msg
-        rospy.loginfo(
-            "Received new position: x={}, y={}".format(self._current_pose.pose.position.x, self._current_pose.pose.position.y))
 
     def _set_base_waypoints(self, lane):
+        """
+        setter for base points and invokes drawing of the track image
+        :param lane:
+        """
         if self._base_waypoints is None:
             self._base_waypoints = lane.waypoints
-            rospy.logwarn("Waypoints loaded... found {}.".format(len(self._base_waypoints)))
             # draws track image right after setting waypoints
             # this way it only has to be done once
             self._draw_track()
 
     def _set_final_waypoints(self, lane):
         self._final_waypoints = lane.waypoints
-        # rospy.logwarn("Final waypoints received! Got: {}".format(len(self._final_waypoints)))
 
     def _set_traffic_waypoints(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
@@ -345,10 +491,24 @@ class Dashboard(object):
     def _set_twist_cmd(self, msg):
         self._twist_cmd = msg
 
+    def _set_steering_cmd(self, msg):
+        self._steering_cmd = msg
+
+    def _set_throttle_cmd(self, msg):
+        self._throttle_cmd = msg
+
+    def _set_brake_cmd(self, msg):
+        self._brake_cmd = msg
+
     def _set_image(self, msg):
         self._image = msg
 
     def _set_traffic_lights(self, msg):
+        """
+        traffic lights setter
+        iterates through TL and maps it to their states in a dictionary
+        :param msg:
+        """
         self._lights = msg.lights
         self._traffic_lights_per_state.clear()
         for tl in msg.lights:
@@ -361,8 +521,18 @@ class Dashboard(object):
                 self._traffic_lights_per_state[state_tl] = list()
             self._traffic_lights_per_state[state_tl].append((x_tl, y_tl, orientation_tl, stamp_tl))
 
-    def _get_text_size(self, text, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=2, thickness=2):
-        return cv2.getTextSize(text, fontFace, fontScale, thickness)
+    @staticmethod
+    def _get_text_size(text, fontface=cv2.FONT_HERSHEY_COMPLEX, fontscale=2, thickness=2):
+        """
+        static method to get the text size for a text with given parameters
+
+        :param text:
+        :param fontface:
+        :param fontscale:
+        :param thickness:
+        :return:
+        """
+        return cv2.getTextSize(text, fontface, fontscale, thickness)
 
 
 if __name__ == '__main__':

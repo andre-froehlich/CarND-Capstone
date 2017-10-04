@@ -70,7 +70,7 @@ class DBWNode(object):
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
 
         # Members
-        self.dbw_enabled = True
+        self.dbw_enabled = True  # TODO: should be initialized with False!
         self.current_velocity = None
         self.twist_cmd = None
         self.last_throttle = 0.0
@@ -145,7 +145,8 @@ class DBWNode(object):
             self.last_brake = brake
             bcmd = BrakeCmd()
             bcmd.enable = True
-            bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
+            # has to be percentage since we derive brake from throttle
+            bcmd.pedal_cmd_type = BrakeCmd.CMD_PERCENT
             bcmd.pedal_cmd = brake
             self.brake_pub.publish(bcmd)
             rospy.loginfo("Issued brake command, value={}".format(brake))

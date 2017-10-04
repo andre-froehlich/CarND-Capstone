@@ -4,6 +4,7 @@ import rospy
 import tf
 import math
 
+
 def get_closest_waypoint(waypoints, pose):
     """Identifies the closest path waypoint to the given position
         https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
@@ -142,9 +143,15 @@ def distance(waypoints, wp1, wp2):
     return dist
 
 
+def distance2d(p1, p2):
+    return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+
 transform_listener = tf.TransformListener()
 
+
 def project_to_image_plane(point_in_world, fx=2574.0, fy=2744.0, image_width=800, image_height=600):
+
     """Project point from 3D world coordinates to 2D camera image location
 
     Args:
@@ -153,6 +160,11 @@ def project_to_image_plane(point_in_world, fx=2574.0, fy=2744.0, image_width=800
     Returns:
         x (int): x coordinate of target point in image
         y (int): y coordinate of target point in image
+        :param image_height:
+        :param image_width:
+        :param fy:
+        :param point_in_world:
+        :param fx:
 
     """
 

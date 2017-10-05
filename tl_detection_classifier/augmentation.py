@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def augmentation_pipeline(img):
 
     # Brightness 50/50
@@ -29,6 +30,7 @@ def augmentation_pipeline(img):
         img = aug_flip(img)
 
     return img
+
 
 def aug_brightness(img_in):
     """
@@ -207,6 +209,7 @@ def aug_perspective(img_in):
     img_out = cv2.warpPerspective(img_in, m, (width, height))
 
     return img_out
+
 
 def bgr2rgb(img_bgr):
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)

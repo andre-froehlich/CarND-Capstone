@@ -124,8 +124,10 @@ def check_is_ahead(pose_1, pose_2):
     else:
         return True
 
+
 def dist(pose_1, pose_2):
     return math.sqrt(squared_dist(pose_1, pose_2))
+
 
 def squared_dist(pose_1, pose_2):
     dx = pose_1.pose.position.x - pose_2.pose.position.x
@@ -210,12 +212,14 @@ def project_to_image_plane(point_in_world, fx=2574.0, fy=2744.0, image_width=800
     else:
         return None
 
+
 def normalize_angle(angle):
     while angle < 0:
         angle += 2 * math.pi
     while angle > 2 * math.pi:
         angle -= 2 * math.pi
     return angle
+
 
 def get_angles(pose_1, pose_2):
     # Get roll, pitch, yaw of pose_1
@@ -287,11 +291,9 @@ def get_angles(pose_1, pose_2):
 
     return delta_roll, delta_pitch, delta_yaw
 
+
 def get_img_coordinate(pose_1, pose_2):
     delta_roll, delta_pitch, delta_yaw = get_angles(pose_1, pose_2)
     rospy.logerr("roll={}, pitch={}, yaw={}".format(delta_roll, delta_pitch, delta_yaw))
 
     return delta_roll, delta_pitch, delta_yaw
-
-
-

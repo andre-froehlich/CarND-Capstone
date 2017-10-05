@@ -69,6 +69,44 @@ def get_dataset(df, source=None):
 
     return dataset
 
+def balance_dataset(df):
+    """
+    Balance the dataset to have equal counts of labels
+    :param df: pandas dataset with file paths, labels and source
+    :return: pandas dataset balanced
+    """
+    print('# Balancing dataset')
+    # Check what sources are available
+    sources = np.unique(df['source'])
+
+    # Init balanced data frame
+    df_bal = pd.DataFrame
+
+    # Loop through sources
+    for source in sources:
+        print("## Processing data from: {}".format(source))
+        df_temp = df.loc[df['source'] == source]
+
+        states = np.unique(df['state'])
+
+        # Look for minimum occurance of a state in set
+        minimum = 99999999999
+        state = 6
+        for state in states:
+            print("State {}: {} counts".format(state, len(df_temp.loc[df_temp['state'] == state])))
+
+
+        if df_bal.empty:
+            df_bal = df_temp
+        else:
+            df_bal = pd.concat([df_bal, df_temp], ignore_index=True)
+
+        print(len(df_temp))
+    print(len(df_bal))
+
+
+
+
 def generator(samples, batch_size=32):
     num_samples = len(samples)
     while 1: # Keep generator running

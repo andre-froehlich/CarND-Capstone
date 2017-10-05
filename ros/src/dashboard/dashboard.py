@@ -344,7 +344,7 @@ class Dashboard(object):
                     key = pygame.key.get_pressed()
 
                     if key[pygame.K_ESCAPE]:
-                        self.close()
+                        break
 
                     if key[pygame.K_0]:
                         self._save_image(0)

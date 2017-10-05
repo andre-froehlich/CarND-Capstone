@@ -66,7 +66,7 @@ class TLDetector(object):
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             # For testing assume waypoint with index 100 is stop line for a traffic light with red light
-            self.upcoming_red_light_pub.publish(600)
+            self.upcoming_red_light_pub.publish(500)
             rate.sleep()
 
     def pose_cb(self, msg):

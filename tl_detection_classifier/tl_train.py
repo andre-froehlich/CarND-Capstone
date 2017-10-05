@@ -11,6 +11,9 @@ from keras.layers.pooling import MaxPooling2D
 
 # Load dataset to train and validate on
 samples_df = import_data()
+
+#TODO: Balance dataset
+
 samples = get_dataset(samples_df, source='sim')
 #print(len(samples))
 
@@ -28,6 +31,8 @@ val_generator = generator(val_samples, batch_size=32)
 #
 
 model = Sequential()
+
+#TODO: same size independent from source
 
 # Normalize
 model.add(Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(600, 800, 3)))

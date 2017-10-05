@@ -2,11 +2,13 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
+from tl_train_helper import *
 from augmentation import *
-from tl_train_helper.py import *
 
-src = '/Users/jakobkammerer/Google Drive/Happy Robots/TrafficLightData_real/data000155.png'
+src = '/Users/jakobkammerer/Learning/carnd/'
 
+# AUGMENTATION
+"""
 img = cv2.imread(src)
 
 
@@ -16,3 +18,8 @@ for i in range(20):
     plt.imshow(bgr2rgb(augmentation_pipeline(img)))
     plt.axis('off')
 plt.show()
+"""
+
+# DATASET BALANCE
+data = import_data()
+balance_dataset(data)

@@ -19,7 +19,7 @@ def get_closest_waypoint(waypoints, pose):
     return 0
 
 
-def get_next(base_pose, pose_list):
+def get_next(base_pose, pose_list, skip_orientation_check=False):
     """
     Returns index of the next list entry to base_pose
     :param base_pose: Single Pose (e.g. current pose)
@@ -31,7 +31,7 @@ def get_next(base_pose, pose_list):
 
     for i in range(0, len(pose_list)):
         # Check if pose in list in in front of the vehicle
-        if check_is_ahead(base_pose.pose, pose_list[i].pose.pose):
+        if skip_orientation_check or check_is_ahead(base_pose.pose, pose_list[i].pose.pose):
 
             # Calculate the distance between pose und pose in list
             dist = squared_dist(base_pose, pose_list[i].pose)

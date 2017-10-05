@@ -46,7 +46,7 @@ class WaypointUpdater(object):
         self.working_waypoints = None
         self.len_waypoints = None
         self.lookahead_wps = None
-        self.traffic_waypoint_index = None
+        self.traffic_waypoint_index = -1
         self.is_braking_active = False
         self.current_velocity = 0.0
 
@@ -63,11 +63,11 @@ class WaypointUpdater(object):
 
                 final_waypoints = None
                 # Check, how far ahead of current pose is the red traffic light
-                rospy.logwarn("tl_index={}, closest_index={}".format(self.traffic_waypoint_index, closest_index))
+                # rospy.logwarn("tl_index={}, closest_index={}".format(self.traffic_waypoint_index, closest_index))
                 delta_index = sys.maxint
-                if self.traffic_waypoint_index is not None:
+                if self.traffic_waypoint_index != -1:
                     delta_index = self.traffic_waypoint_index - closest_index
-                    if (delta_index <= 0):
+                    if delta_index <= 0:
                         delta_index += self.len_waypoints
 
                 if self.is_braking_active:

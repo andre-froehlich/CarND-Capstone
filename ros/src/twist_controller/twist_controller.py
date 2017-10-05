@@ -58,6 +58,8 @@ class Controller(object):
             # brake = max(error_v, 1.0)
 
             brake = -a * self.total_mass * self.wheel_radius
+            if (brake < self.brake_deadband):
+                brake = 0.0
             throttle = 0.0
         else:
             brake = 0.0

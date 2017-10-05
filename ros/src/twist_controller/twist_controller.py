@@ -13,15 +13,21 @@ class Controller(object):
                  wheel_base, steer_ratio, max_lat_accel, max_steer_angle, kp, ki, kd):
         rospy.logwarn("wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio, max_lat_accel, max_steer_angle))
 
+        self.wheel_radius = wheel_radius
+        self.brake_deadband = brake_deadband
+        self.total_mass = vehicle_mass + fuel_capacity * GAS_DENSITY
+        self.decel_limit = decel_limit
+
         # PID controller used for velocity control
         # using kp, ki, kd from params file
         self.pid = PID(kp, ki, kd, decel_limit, accel_limit)
-
         self.last_t = None
 
         # yaw_controller used for steering angle
-        # self.low_pass_filter = LowPassFilter(0.96, 1.0)
-        self.yaw_controller = YawController(wheel_base, steer_ratio, 5.0, max_lat_accel, max_steer_angle)
+        self.yaw_controller = YawController(wheel_base, steer_ratio, 1.0, max_lat_accel, max_steer_angle)
+
+        self.low_pass_filter = LowPassFilter(4.0, 1.0)
+
 
     def control(self, twist_cmd, velocity_cmd):
         # TODO: Change the arg, kwarg list to suit your needs
@@ -32,7 +38,6 @@ class Controller(object):
 
         # Calculate steering
         twist_linear_x = twist_cmd.twist.linear.x
-        #twist_angular_z = self.low_pass_filter.filt(twist_cmd.twist.angular.z)
         twist_angular_z = twist_cmd.twist.angular.z
         current_velocity_x = velocity_cmd.twist.linear.x
 
@@ -43,18 +48,21 @@ class Controller(object):
         # rospy.logwarn("twist_linear_x={}\tcurrent_v={}\terror_v={}\n".format(twist_linear_x, current_velocity_x, error_v))
         # getting throttle from pid controller with error_v and delta_t
         # keeping it between 0.0 and 1.0
-        throttle = max(0.0, min(1.0, self.pid.step(error_v, delta_t)))
+        a = self.low_pass_filter.filt(self.pid.step(error_v, delta_t))
 
-        if error_v < 0:
+        # throttle = max(0.0, min(1.0, self.pid.step(error_v, delta_t)))
+
+        if a < 0:
             # error_v smaller zero means braking
             # limit to 1.0 and set throttle to 0.0
-            brake = max(error_v, 1.0)
+            # brake = max(error_v, 1.0)
+
+            brake = -a * self.total_mass * self.wheel_radius
             throttle = 0.0
         else:
             brake = 0.0
+            throttle = min(1.0, a)
 
         steer = self.yaw_controller.get_steering(twist_linear_x, twist_angular_z, current_velocity_x)
 
-        # throttle = 0.25
-        # brake = 0.0
         return throttle, brake, steer

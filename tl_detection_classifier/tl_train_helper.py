@@ -1,6 +1,5 @@
 import sys
 import glob
-import csv
 import pandas as pd
 import numpy as np
 import sklearn.utils
@@ -10,58 +9,42 @@ from augmentation import *
 
 #src = '/Users/jakobkammerer/Learning/carnd/'
 
-def import_data(root_path='/Users/jakobkammerer/Learning/carnd/'):
+
+def import_data(root_path='/Users/jakobkammerer/Google Drive/Happy Robots/train/', fformat='.png', source='*/'):
+
     # Strings to directories
-    filepaths_real = glob.glob(root_path + 'TrafficLightData_real/*.png')
-    filepaths_sim = glob.glob(root_path + 'TrafficLightData_sim/*.png')
+    states = ['0-red', '1-yellow', '2-green', '3-nolight'] # 4-twilight
+    data = pd.DataFrame
 
-    # Read in CSV data for labeling
-    labels_real = read_labels_from_csv(root_path + 'TrafficLightData_real/state.csv')
-    labels_sim = read_labels_from_csv(root_path + 'TrafficLightData_sim/state.csv')
+    for state in states:
+        # Get image path and label
+        filepaths = glob.glob(root_path + source + state + '/*' + fformat)
+        states = [int(state[0]),] * len(filepaths)
 
-    print("Data Loaded from {}".format(root_path))
-    print("REAL: {} Pictures, {} Labels".format(len(filepaths_real), len(labels_real)))
-    print("SIM:  {} Pictures, {} Labels".format(len(filepaths_sim), len(labels_sim)))
+        # Create temporary data frame
+        d = {'file_path': filepaths, 'state': states}
+        df_temp = pd.DataFrame(data=d)
 
-    # Create data frames (pandas)
-    df_real = to_dataframe(filepaths_real, labels_real, source='real')
-    df_sim = to_dataframe(filepaths_sim, labels_sim, source='simulator')
-
-    df = pd.concat([df_real, df_sim], ignore_index=True)
-
-    #df.to_csv('../test.csv')
-
-    return df
+        # Merge data frames
+        if data.empty:
+            data = df_temp
+        else:
+            data = pd.concat([data, df_temp], ignore_index=True)
 
 
-def read_labels_from_csv(path_to_csv):
-    with open(path_to_csv) as file:
-        csv_read = csv.reader(file)
-        labels = []
-        [labels.append(int(line[3])) for line in csv_read]
+    print("# Data Import")
+    print("# - from {}".format(root_path))
+    print("# - {} Pictures\n".format(len(data)))
 
-    return labels
+    return data
 
-def to_dataframe(file_paths, labels, source='unknown'):
 
-    source = [source,] * len(labels)
-
-    d = {'file_path': file_paths, 'state': labels, 'source': source}
-    df = pd.DataFrame(data=d)
-
-    return df
-
-def get_dataset(df, source=None):
+def get_dataset(df):
     """
-    Returns a dataset with [file_path, label] according to selected source;
-    If no source given: return all
-    :param df: pandas.DataFrame input with file_paths, labels, source
-    :param source: optional: select source to be included in returned dataset
+    Converts pandas data frame to an array with [file_path, label]
+    :param df: pandas.DataFrame input with file_paths, labels
     :return: dataset as array
     """
-    if source:
-        df = df.loc[df['source'] == source]
-
     file_paths = df['file_path'].as_matrix()
     labels = df['state'].as_matrix()
 
@@ -75,36 +58,58 @@ def balance_dataset(df):
     :param df: pandas dataset with file paths, labels and source
     :return: pandas dataset balanced
     """
-    print('# Balancing dataset')
-    # Check what sources are available
-    sources = np.unique(df['source'])
+    print('# Data Set Balancing')
+
 
     # Init balanced data frame
     df_bal = pd.DataFrame
 
-    # Loop through sources
-    for source in sources:
-        print("## Processing data from: {}".format(source))
-        df_temp = df.loc[df['source'] == source]
+    states = np.unique(df['state'])
 
-        states = np.unique(df['state'])
+    # Look for minimum occurance of a state in set
+    print("# - Analyzing")
+    min_glob = 99999999999
+    min_state = 6
+    for state in states:
+        min_temp = len(df.loc[df['state'] == state])
+        print("# -- State {}: {} counts".format(state, min_temp))
 
-        # Look for minimum occurance of a state in set
-        minimum = 99999999999
-        state = 6
+        if min_temp < min_glob:
+            min_glob = min_temp
+            min_state = state
+
+    if min_glob == 99999999999:
+        print("# > Data set already balanced")
+
+    else:
+        print("# - Balancing to {} counts due to state {}".format(min_glob, min_state))
+
         for state in states:
-            print("State {}: {} counts".format(state, len(df_temp.loc[df_temp['state'] == state])))
+            df_temp = df.loc[df['state'] == state]
 
+            if len(df_temp) > min_glob:
+                reduce = len(df_temp) - min_glob
+                # Shuffle the data frame
+                df_temp = df_temp.sample(frac=1)
+                # Delete rows according to reduce
+                df_temp = df_temp.iloc[reduce:]
 
-        if df_bal.empty:
-            df_bal = df_temp
-        else:
-            df_bal = pd.concat([df_bal, df_temp], ignore_index=True)
+                if df_bal.empty:
+                    df_bal = df_temp
+                else:
+                    df_bal = pd.concat([df_bal, df_temp], ignore_index=True)
 
-        print(len(df_temp))
-    print(len(df_bal))
+                print("# -- State {} reduced by {}; New counts: {}".format(state, reduce, len(df_temp)))
 
+            else:
+                if df_bal.empty:
+                    df_bal = df_temp
+                else:
+                    df_bal = pd.concat([df_bal, df_temp], ignore_index=True)
 
+        print("# > New length of balanced data set: {}\n".format(len(df_bal)))
+
+    return df_bal
 
 
 def generator(samples, batch_size=32):
@@ -123,6 +128,7 @@ def generator(samples, batch_size=32):
             for batch_sample in batch_samples:
                 # Load image and label
                 image = cv2.imread(batch_sample[0])
+                image = resize_img(image)
                 label = batch_sample[1]
 
                 if image is None:
@@ -138,3 +144,7 @@ def generator(samples, batch_size=32):
             y_train = np.array(labels)
 
             yield sklearn.utils.shuffle(X_train, y_train)
+
+
+def resize_img(img):
+    return cv2.resize(img, (800, 600), interpolation=cv2.INTER_CUBIC)

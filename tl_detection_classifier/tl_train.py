@@ -9,18 +9,17 @@ from keras.layers import Flatten, Dense, Lambda, Cropping2D, Dropout
 from keras.layers.convolutional import Conv2D
 from keras.layers.pooling import MaxPooling2D
 
-# Load dataset to train and validate on
-samples_df = import_data()
+# Load dataset to train and validate on as pandas DataFrame
+samples_df = import_data(source='simulator/')
 
-#TODO: Balance dataset
+# Balance the dataset
+samples_df_bal = balance_dataset(samples_df)
 
-samples = get_dataset(samples_df, source='sim')
-#print(len(samples))
+# Get np.arrays with sampels
+samples = get_dataset(samples_df)
 
 # Split into train and test set
 train_samples, val_samples = train_test_split(samples, test_size=.3)
-#print(len(train_samples))
-#print(len(val_samples))
 
 # Set up generators
 train_generator = generator(train_samples, batch_size=32)

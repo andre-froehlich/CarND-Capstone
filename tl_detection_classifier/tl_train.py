@@ -16,10 +16,13 @@ samples_df = import_data(source='simulator/')
 samples_df_bal = balance_dataset(samples_df)
 
 # Get np.arrays with sampels
-samples = get_dataset(samples_df)
+samples = get_dataset(samples_df_bal)
 
 # Split into train and test set
 train_samples, val_samples = train_test_split(samples, test_size=.3)
+print("# Split Training / Validation")
+print("# - Training size: {}".format(len(train_samples)))
+print("# - Validation size: {}".format(len(val_samples)))
 
 # Set up generators
 train_generator = generator(train_samples, batch_size=32)
@@ -30,19 +33,23 @@ val_generator = generator(val_samples, batch_size=32)
 #
 
 model = Sequential([
-    # TODO: same size independent from source
+    # Normalize
     Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(600, 800, 3)),
+
+    # Convolutional Layers
     Conv2D(6, 5, 5, activation='relu'),
     MaxPooling2D(),
     Conv2D(16, 5, 5, activation='relu'),
     MaxPooling2D(),
     Dropout(0.5),
+
+    # Fully connected layers
     Flatten(),
     Dense(500, activation='relu'),
     Dropout(0.5),
     Dense(180, activation='relu'),
     Dense(84, activation='relu'),
-    Dense(5)])
+    Dense(4)])
 
 model.compile(loss='mse', optimizer='adam')
 

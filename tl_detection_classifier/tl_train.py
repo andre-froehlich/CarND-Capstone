@@ -12,15 +12,15 @@ from keras.layers.pooling import MaxPooling2D
 # Load dataset to train and validate on
 samples_df = import_data()
 
-#TODO: Balance dataset
+# TODO: Balance dataset
 
 samples = get_dataset(samples_df, source='sim')
-#print(len(samples))
+# print(len(samples))
 
 # Split into train and test set
 train_samples, val_samples = train_test_split(samples, test_size=.3)
-#print(len(train_samples))
-#print(len(val_samples))
+# print(len(train_samples))
+# print(len(val_samples))
 
 # Set up generators
 train_generator = generator(train_samples, batch_size=32)
@@ -30,25 +30,20 @@ val_generator = generator(val_samples, batch_size=32)
 #  Model
 #
 
-model = Sequential()
-
-#TODO: same size independent from source
-
-# Normalize
-model.add(Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(600, 800, 3)))
-
-# Layers and pooling
-model.add(Conv2D(filters=6, kernel_size=5, strides=5, activation='relu'))
-model.add(MaxPooling2D())
-model.add(Conv2D(16, 5, 5, activation='relu'))
-model.add(MaxPooling2D())
-model.add(Dropout(0.5))
-model.add(Flatten())
-model.add(Dense(500, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(180, activation='relu'))
-model.add(Dense(84, activation='relu'))
-model.add(Dense(5))
+model = Sequential([
+    # TODO: same size independent from source
+    Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(600, 800, 3)),
+    Conv2D(filters=6, kernel_size=5, strides=5, activation='relu'),
+    MaxPooling2D(),
+    Conv2D(16, 5, 5, activation='relu'),
+    MaxPooling2D(),
+    Dropout(0.5),
+    Flatten(),
+    Dense(500, activation='relu'),
+    Dropout(0.5),
+    Dense(180, activation='relu'),
+    Dense(84, activation='relu'),
+    Dense(5)])
 
 model.compile(loss='mse', optimizer='adam')
 

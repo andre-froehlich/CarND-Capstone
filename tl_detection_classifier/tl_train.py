@@ -33,7 +33,7 @@ val_generator = generator(val_samples, batch_size=32)
 model = Sequential([
     # TODO: same size independent from source
     Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(600, 800, 3)),
-    Conv2D(filters=6, kernel_size=5, strides=5, activation='relu'),
+    Conv2D(6, 5, 5, activation='relu'),
     MaxPooling2D(),
     Conv2D(16, 5, 5, activation='relu'),
     MaxPooling2D(),

@@ -8,9 +8,8 @@ import cv2
 
 from augmentation import *
 
-#src = '/Users/jakobkammerer/Learning/carnd/'
 
-def import_data(root_path='/Users/jakobkammerer/Learning/carnd/'):
+def import_data(root_path='../training_data/'):
     # Strings to directories
     filepaths_real = glob.glob(root_path + 'TrafficLightData_real/*.png')
     filepaths_sim = glob.glob(root_path + 'TrafficLightData_sim/*.png')
@@ -29,7 +28,7 @@ def import_data(root_path='/Users/jakobkammerer/Learning/carnd/'):
 
     df = pd.concat([df_real, df_sim], ignore_index=True)
 
-    #df.to_csv('../test.csv')
+    # df.to_csv('../test.csv')
 
     return df
 
@@ -42,14 +41,15 @@ def read_labels_from_csv(path_to_csv):
 
     return labels
 
-def to_dataframe(file_paths, labels, source='unknown'):
 
-    source = [source,] * len(labels)
+def to_dataframe(file_paths, labels, source='unknown'):
+    source = [source, ] * len(labels)
 
     d = {'file_path': file_paths, 'state': labels, 'source': source}
     df = pd.DataFrame(data=d)
 
     return df
+
 
 def get_dataset(df, source=None):
     """
@@ -68,6 +68,7 @@ def get_dataset(df, source=None):
     dataset = [[file_paths[i], labels[i]] for i in range(len(file_paths))]
 
     return dataset
+
 
 def balance_dataset(df):
     """
@@ -95,7 +96,6 @@ def balance_dataset(df):
         for state in states:
             print("State {}: {} counts".format(state, len(df_temp.loc[df_temp['state'] == state])))
 
-
         if df_bal.empty:
             df_bal = df_temp
         else:
@@ -105,17 +105,15 @@ def balance_dataset(df):
     print(len(df_bal))
 
 
-
-
 def generator(samples, batch_size=32):
     num_samples = len(samples)
-    while 1: # Keep generator running
+    while 1:  # Keep generator running
         # Shuffle the set
         sklearn.utils.shuffle(samples)
 
         for offset in range(0, num_samples, batch_size):
             # Create a subset according to batch_size
-            batch_samples = samples[offset:(offset+batch_size)]
+            batch_samples = samples[offset:(offset + batch_size)]
 
             images = []
             labels = []

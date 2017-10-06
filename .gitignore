@@ -9,3 +9,5 @@ profile.tmp
 
 test.py
 .DS_Store
+
+training_data/*

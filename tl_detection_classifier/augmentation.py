@@ -3,6 +3,8 @@ import numpy as np
 
 
 def augmentation_pipeline(img):
+    if np.random.randint(2) == 0:
+        return img
 
     # Brightness 50/50
     if np.random.randint(2) == 1:

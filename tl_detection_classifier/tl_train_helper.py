@@ -4,39 +4,34 @@ import pandas as pd
 import numpy as np
 import sklearn.utils
 import cv2
+# from keras.utils import to_categorical
 
 from augmentation import *
 
 #src = '/Users/jakobkammerer/Learning/carnd/'
 
 
-def import_data(root_path='/Users/jakobkammerer/Google Drive/Happy Robots/train/', fformat='.png', source='*/'):
-
+def import_data(root_path, source, fformat):
     # Strings to directories
     states = ['0-red', '1-yellow', '2-green', '3-nolight'] # 4-twilight
-    data = pd.DataFrame
+    data_frames = []
 
     for state in states:
         # Get image path and label
-        filepaths = glob.glob(root_path + source + state + '/*' + fformat)
+        filepaths = glob.glob(root_path + source + state + "/" + fformat)
         states = [int(state[0]),] * len(filepaths)
 
         # Create temporary data frame
         d = {'file_path': filepaths, 'state': states}
-        df_temp = pd.DataFrame(data=d)
+        df = pd.DataFrame(data=d)
 
-        # Merge data frames
-        if data.empty:
-            data = df_temp
-        else:
-            data = pd.concat([data, df_temp], ignore_index=True)
+        data_frames.append(df)
 
+    # print("# Data Import")
+    # print("# - from {}".format(root_path))
+    # print("# - {} Pictures\n".format(len(data)))
 
-    print("# Data Import")
-    print("# - from {}".format(root_path))
-    print("# - {} Pictures\n".format(len(data)))
-
-    return data
+    return data_frames
 
 
 def get_dataset(df):
@@ -111,6 +106,28 @@ def balance_dataset(df):
 
     return df_bal
 
+def generator_v2(samples_by_state, batch_size=32, augment=True):
+    for samples in samples_by_state:
+        sklearn.utils.shuffle(samples)
+
+    while True:
+        X = []
+        y = []
+
+        for i in range(batch_size):
+            sample_class = np.random.randint(4)
+            sample_index = np.random.randint(len(samples_by_state[sample_class]))
+            image = samples_by_state[sample_class][sample_index]
+            if augment:
+                image = augmentation_pipeline(image)
+            y_onehot = [0] * 4
+            y_onehot[sample_class] = 1
+
+            X.append(image)
+            y.append(y_onehot)
+
+        X, y = sklearn.utils.shuffle(X, y)
+        yield np.array(X), np.array(y)
 
 def generator(samples, batch_size=32):
     num_samples = len(samples)
@@ -135,7 +152,7 @@ def generator(samples, batch_size=32):
                     sys.exit("image is None")
 
                 # Augment image
-                image_aug = augementation_pipeline(image)
+                image_aug = augmentation_pipeline(image)
 
                 images.append(image_aug)
                 labels.append(label)
@@ -143,7 +160,8 @@ def generator(samples, batch_size=32):
             X_train = np.array(images)
             y_train = np.array(labels)
 
-            yield sklearn.utils.shuffle(X_train, y_train)
+            X_train, y_train = sklearn.utils.shuffle(X_train, y_train)
+            yield X_train, np.resize(y_train, (batch_size, 4))
 
 
 def resize_img(img):

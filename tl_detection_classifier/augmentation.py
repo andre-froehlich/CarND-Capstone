@@ -3,7 +3,7 @@ import numpy as np
 
 
 def augmentation_pipeline(img):
-    if np.random.randint(2) == 0:
+    if np.random.randint(2) == 1:
         return img
 
     # Brightness 50/50
@@ -114,12 +114,16 @@ def aug_shift(img_in):
     :return: BGR image shifted
     """
     # Percentage
-    rand_shift_x = np.random.randint(low=1, high=31) - 15
-    rand_shift_y = np.random.randint(low=1, high=31) - 15
+    # rand_shift_x = np.random.randint(low=1, high=31) - 15
+    # rand_shift_y = np.random.randint(low=1, high=31) - 15
+
+    shift_x = np.random.normal(0.0, 0.05)
+    shift_y = np.random.normal(0.0, 0.05)
 
     # Pixels
-    rand_shift_x = np.int(np.shape(img_in)[1] * (rand_shift_x / 100))
-    rand_shift_y = np.int(np.shape(img_in)[0] * (rand_shift_y / 100))
+    rand_shift_x = np.int(np.shape(img_in)[1] * shift_x)
+    rand_shift_y = np.int(np.shape(img_in)[0] * shift_y)
+    # print rand_shift_x, rand_shift_y
 
     # Shift
     shift_m = np.float32([[1, 0, rand_shift_x], [0, 1, rand_shift_y]])
@@ -127,7 +131,6 @@ def aug_shift(img_in):
                                (np.shape(img_in)[1], np.shape(img_in)[0]))
 
     return img_shift
-
 
 def aug_flip(img_in):
     """

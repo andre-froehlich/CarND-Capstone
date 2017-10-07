@@ -4,6 +4,7 @@ import rospy
 from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped
+from styx_msgs.msg import Debug
 from twist_controller import Controller
 
 '''
@@ -46,19 +47,16 @@ class DBWNode(object):
         wheel_radius = rospy.get_param('~wheel_radius', 0.2413)
         wheel_base = rospy.get_param('~wheel_base', 2.8498)
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
-        # steer_ratio = rospy.get_param('~steer_ratio', 118.4)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
         kp = rospy.get_param('~kp', .0)
         ki = rospy.get_param('~ki', .0)
         kd = rospy.get_param('~kd', .0)
 
-        self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
-                                         SteeringCmd, queue_size=1)
-        self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',
-                                            ThrottleCmd, queue_size=1)
-        self.brake_pub = rospy.Publisher('/vehicle/brake_cmd',
-                                         BrakeCmd, queue_size=1)
+        self.steer_pub = rospy.Publisher('/vehicle/steering_cmd', SteeringCmd, queue_size=1)
+        self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd', ThrottleCmd, queue_size=1)
+        self.brake_pub = rospy.Publisher('/vehicle/brake_cmd', BrakeCmd, queue_size=1)
+        self.debug_publisher = rospy.Publisher('/debug_msg', Debug, queue_size=1)
 
         # Create `TwistController` object
         self.controller = Controller(vehicle_mass, fuel_capacity, brake_deadband, decel_limit, accel_limit,
@@ -70,7 +68,7 @@ class DBWNode(object):
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
 
         # Members
-        self.dbw_enabled = True  # TODO: should be initialized with False!
+        self.dbw_enabled = True
         self.current_velocity = None
         self.twist_cmd = None
         self.last_throttle = 0.0
@@ -98,11 +96,25 @@ class DBWNode(object):
                 throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
 
                 rospy.loginfo("Current_v={}, twist_v={}, Throttle={}, Brake={}, Steer={}, twist_angular_z={}".
-                              format(self.current_velocity.twist.linear.x,
-                                     self.twist_cmd.twist.linear.x,
-                                     throttle, brake, steer,
-                                     self.twist_cmd.twist.angular.z))
+                              format(self.current_velocity.twist.linear.x, self.twist_cmd.twist.linear.x,
+                                     throttle, brake, steer, self.twist_cmd.twist.angular.z))
                 self.publish(throttle, brake, steer)
+
+            elif not self.dbw_enabled:
+                self.controller.reset()
+
+            if len(self.controller.twist_values[0]) > 50:
+                dbg_msg = Debug()
+                dbg_msg.v_ref       = self.controller.twist_values[0]
+                dbg_msg.v_cur       = self.controller.twist_values[1]
+                dbg_msg.brake       = self.controller.twist_values[2]
+                dbg_msg.throttle    = self.controller.twist_values[3]
+                dbg_msg.v_err       = self.controller.twist_values[4]
+                dbg_msg.lowpass_out = self.controller.twist_values[5]
+                # dbg_msg.steer       = self.controller.twist_values[6]
+                # dbg_msg.twist_linear_x  = self.controller.twist_values[7]
+                # dbg_msg.twist_angular_z = self.controller.twist_values[8]
+                self.debug_publisher.publish(dbg_msg)
 
             rate.sleep()
 
@@ -122,7 +134,7 @@ class DBWNode(object):
         # rospy.logdebug(msg)
 
     def publish(self, throttle, brake, steer):
-        if (abs(self.last_throttle - throttle) > EPSILON_THROTTLE):
+        if abs(self.last_throttle - throttle) > EPSILON_THROTTLE:
             self.last_throttle = throttle
             tcmd = ThrottleCmd()
             tcmd.enable = True
@@ -134,7 +146,7 @@ class DBWNode(object):
             pass
             # rospy.loginfo("Did no issue throttle command, value={}, last value={}".format(throttle, self.last_throttle))
 
-        if (abs(self.last_steer - steer) > EPSILON_STEER):
+        if abs(self.last_steer - steer) > EPSILON_STEER:
             self.last_steer = steer
             scmd = SteeringCmd()
             scmd.enable = True

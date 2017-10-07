@@ -7,6 +7,7 @@ from ast import literal_eval as make_tuple
 from cv_bridge import CvBridge
 from math import sqrt, pi, tan
 import cv2
+import matplotlib.pyplot as plt
 
 import pygame
 import rospy
@@ -14,7 +15,7 @@ from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool
-from styx_msgs.msg import Lane, TrafficLightArray
+from styx_msgs.msg import Lane, TrafficLightArray, Debug
 from utilities import utils
 
 # couple of colors
@@ -33,6 +34,7 @@ TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN}
 class Dashboard(object):
     # pygame display
     _screen = None
+    _screen_2 = None
     # actual window dimensions
     _window_dimensions = None
     # arbitrary dimensions to fit track
@@ -58,12 +60,15 @@ class Dashboard(object):
     _track_image = None
     # is updated each iteration with new values
     _dashboard_img = None
+    _debug_img = None
 
     _image = None
     _bridge = CvBridge()
 
     _config = None
     _stop_line_positions = None
+
+    _debug_msg = None
 
     def __init__(self):
         rospy.init_node('dashboard_node')
@@ -95,6 +100,8 @@ class Dashboard(object):
         rospy.Subscriber('/vehicle/throttle_cmd', ThrottleCmd, self._set_throttle_cmd)
         rospy.Subscriber('/vehicle/brake_cmd', BrakeCmd, self._set_brake_cmd)
 
+        rospy.Subscriber('/debug_msg', Debug, self.set_debug_msg)
+
         # Load traffic light config
         config_string = rospy.get_param("/traffic_light_config")
         self._config = yaml.load(config_string)
@@ -102,14 +109,14 @@ class Dashboard(object):
         # List of positions that correspond to the line to stop in front of for a given intersection
         self._stop_line_positions = self._config['stop_line_positions']
 
-        # initialize screen with given parameters from dashboard.launch
-        self._init_screen()
+        # initialize screen with given parameters from debug.launch
+        self._screen = self._init_screen()
 
         # start loop
         self._loop()
 
     def _read_params(self):
-        # read window dimensions and background color from dashboard.launch
+        # read window dimensions and background color from debug.launch
         self._window_dimensions = make_tuple(rospy.get_param('~window_dimensions', (300, 200)))
         self._background_color = make_tuple(rospy.get_param('~background_color', str(BLACK)))
         self._text_color = make_tuple(rospy.get_param('~text_color', str(WHITE)))
@@ -123,18 +130,19 @@ class Dashboard(object):
         # pygame.init()
         # set caption of pygame window
         pygame.display.set_caption("Happy Robots Dashboard")
-        # create screen wof window dimensions set in the dashboard.launch file
-        self._screen = pygame.display.set_mode(self._window_dimensions, pygame.DOUBLEBUF)
-        # set background color from dashboard.launch file
-        self._screen.fill(self._background_color)
+        # create screen wof window dimensions set in the debug.launch file
+        screen = pygame.display.set_mode(self._window_dimensions, pygame.DOUBLEBUF)
+        # set background color from debug.launch file
+        screen.fill(self._background_color)
 
-    def _update_screen(self):
-        if self._dashboard_img is not None:
+        return screen
+
+    def _update_screen(self, screen, img):
+        if screen is not None and img is not None:
             # if dashboard_img is set, resize it to window dimension, generate bytes and draw it with pygame
-            self._dashboard_img = pygame.image.fromstring(
-                cv2.resize(self._dashboard_img, self._window_dimensions).tobytes(), self._window_dimensions, 'RGB')
+            image = pygame.image.fromstring(cv2.resize(img, self._window_dimensions).tobytes(), self._window_dimensions, 'RGB')
             # put on _screen
-            self._screen.blit(self._dashboard_img, (0, 0))
+            screen.blit(image, (0, 0))
             # update pygame screen
             pygame.display.flip()
 
@@ -390,7 +398,7 @@ class Dashboard(object):
                 self._print_steering()
 
                 # update screen with new image and refresh window
-                self._update_screen()
+                self._update_screen(self._screen, self._dashboard_img)
 
             # wait for next iteration
             rate.sleep()
@@ -456,6 +464,9 @@ class Dashboard(object):
         """
         rospy.logwarn("close")
         pygame.quit()
+
+    def set_debug_msg(self, msg):
+        self._debug_msg = msg
 
     def _set_current_pose(self, msg):
         self._current_pose = msg

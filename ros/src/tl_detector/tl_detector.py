@@ -73,11 +73,11 @@ class TLDetector(object):
             index, state = self.process_traffic_lights()
 
             # TODO For testing: Car should stop at second traffic light
-            if index == 753:
-                state = TrafficLight.RED
+            # if index == 753:
+            #     state = self.lights[0].state
             # End testing
 
-            rospy.logwarn("Next traffic light wp index={}, state={}".format(index, state))
+            # rospy.logwarn("Next traffic light wp index={}, state={}".format(index, state))
             if state == TrafficLight.GREEN or state == TrafficLight.UNKNOWN:
                 index = -1
             self.upcoming_red_light_pub.publish(Int32(index))
@@ -104,8 +104,8 @@ class TLDetector(object):
 
     def traffic_cb(self, msg):
         # Unsubscribe?
-        if self.lights is None:
-            rospy.logwarn(msg)
+        # if self.lights is None:
+            # rospy.logwarn(msg)
         self.lights = msg.lights
 
     def save_data(self):
@@ -208,7 +208,7 @@ class TLDetector(object):
         # if not self.has_image:
         #     self.prev_light_loc = None
         #     return False
-
+        '''
         if self.camera_image is None:
             return TrafficLight.UNKNOWN
         else:
@@ -219,6 +219,12 @@ class TLDetector(object):
 
             # Get classification
             return self.light_classifier.get_classification(cv_image)
+        '''
+        state = 0
+        if self.lights is not None:
+            state = self.lights[0].state
+
+        return state
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -250,8 +256,7 @@ class TLDetector(object):
                                                                                 self.waypoints.waypoints,
                                                                                 skip_orientation_check=True)[0])
 
-                    rospy.logwarn("sl_pose.x={}, y={}".format(stop_line_pose.pose.position.x,
-                                                              stop_line_pose.pose.position.y))
+                    # rospy.logwarn("sl_pose.x={}, y={}".format(stop_line_pose.pose.position.x, stop_line_pose.pose.position.y))
 
 
             index_stop_line, _ = utils.get_next(self.pose, self.stop_line_waypoints)

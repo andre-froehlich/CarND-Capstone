@@ -28,6 +28,9 @@ class Controller(object):
 
         self.low_pass_filter = LowPassFilter(4.0, 1.0)
 
+        self.twist_values = [[], [], [], [], [], [], [], [], [], []]
+        self._max_data = 200
+
 
     def control(self, twist_cmd, velocity_cmd):
         # TODO: Change the arg, kwarg list to suit your needs
@@ -48,23 +51,41 @@ class Controller(object):
         # rospy.logwarn("twist_linear_x={}\tcurrent_v={}\terror_v={}\n".format(twist_linear_x, current_velocity_x, error_v))
         # getting throttle from pid controller with error_v and delta_t
         # keeping it between 0.0 and 1.0
-        a = self.low_pass_filter.filt(self.pid.step(error_v, delta_t))
 
         # throttle = max(0.0, min(1.0, self.pid.step(error_v, delta_t)))
+        a = self.low_pass_filter.filt(self.pid.step(error_v, delta_t))
 
-        if a < 0:
+        # if a < 0:
+        if abs(error_v) < 0.5:
+            # only correct when abs(error_v) smaller than 0.5
+            brake = 0.0
+            throttle = 0.0
+        elif error_v < 0:
             # error_v smaller zero means braking
             # limit to 1.0 and set throttle to 0.0
             # brake = max(error_v, 1.0)
 
             brake = -a * self.total_mass * self.wheel_radius
-            if (brake < self.brake_deadband):
+            if brake < self.brake_deadband:
                 brake = 0.0
             throttle = 0.0
         else:
             brake = 0.0
             throttle = min(1.0, a)
 
+        self.twist_values[0].append(twist_linear_x)
+        self.twist_values[1].append(current_velocity_x)
+        self.twist_values[2].append(brake)
+        self.twist_values[3].append(throttle)
+        self.twist_values[4].append(error_v)
+        self.twist_values[5].append(self.low_pass_filter.get())
+
         steer = self.yaw_controller.get_steering(twist_linear_x, twist_angular_z, current_velocity_x)
+        # self.twist_values[6].append(steer)
+        # self.twist_values[7].append(twist_linear_x)
+        # self.twist_values[8].append(twist_angular_z)
 
         return throttle, brake, steer
+
+    def reset(self):
+        self.pid.reset()

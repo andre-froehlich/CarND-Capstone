@@ -18,7 +18,8 @@
     <!-- visualize track and other information -->
     <arg name="dashboard" default="True" unless="$(arg dashboard)" />
     <group if="$(arg dashboard)">
-        <include file="$(find dashboard)/launch/dashboard.launch"/>
+        <!-- <include file="$(find dashboard)/launch/dashboard.launch"/> -->
+        <include file="$(find debug)/launch/debug.launch"/>
     </group>
 
     <!--Traffic Light Detector Node -->

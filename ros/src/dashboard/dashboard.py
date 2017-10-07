@@ -347,15 +347,23 @@ class Dashboard(object):
                         break
 
                     if key[pygame.K_0]:
+                        # red light
                         self._save_image(0)
 
                     if key[pygame.K_1]:
+                        # yellow light
                         self._save_image(1)
 
                     if key[pygame.K_2]:
+                        # green light
                         self._save_image(2)
 
+                    if key[pygame.K_3]:
+                        # light cut off, so that we cannot decide on its status
+                        self._save_image(3)
+
                     if key[pygame.K_4]:
+                        # no light visible
                         self._save_image(4)
 
                 # get copy of track_image
@@ -407,6 +415,7 @@ class Dashboard(object):
             time = rospy.Time.now().to_nsec()
             cv_image = self._bridge.imgmsg_to_cv2(self._image, "bgr8")
 
+            '''
             rospy.logwarn("Saved screenshot with state {} at time {}...".format(state, time))
 
             index, dist = utils.get_next(self._current_pose, self._lights)
@@ -433,6 +442,7 @@ class Dashboard(object):
             y = int(400 * tan(delta_pitch)) + 300
             rospy.logwarn("X=" + str(x) + ", Y=" + str(y))
             cv2.circle(cv_image, (x, y), 5, BLACK, -1)
+            '''
 
 
             cv2.imwrite("../../../training_data/img_time{:21d}_state{:1d}.png".format(time, state), cv_image)

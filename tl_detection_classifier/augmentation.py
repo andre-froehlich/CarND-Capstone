@@ -23,7 +23,7 @@ def augmentation_pipeline(img):
         if np.random.randint(2) == 1:
             img = aug_shift(img)
         else:
-            img = aug_shift(img)
+            img = aug_rotation(img)
     # Perspective Transform 50/50
     if np.random.randint(2) == 1:
         img = aug_perspective(img)
@@ -32,7 +32,6 @@ def augmentation_pipeline(img):
         img = aug_flip(img)
 
     return img
-
 
 def aug_brightness(img_in):
     """

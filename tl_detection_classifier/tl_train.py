@@ -59,6 +59,14 @@ val_generator = generator_v2(val_samples_by_state, batch_size=batch_size)
 # print len(X), len(y)
 # print X[0].shape, y[0]
 
+X, y = next(train_generator)
+for i in range(len(X)):
+    state = ""
+    for s in y[i]:
+        state += str(s)
+    cv2.imwrite("generator_output/sample{}_state{}.png".format(i, state), X[i])
+
+exit()
 
 #
 #  Model

@@ -119,7 +119,7 @@ def aug_shift(img_in):
 
     # Pixels
     rand_shift_x = np.int(np.shape(img_in)[1] * (rand_shift_x / 100))
-    rand_shift_x = np.int(np.shape(img_in)[0] * (rand_shift_y / 100))
+    rand_shift_y = np.int(np.shape(img_in)[0] * (rand_shift_y / 100))
 
     # Shift
     shift_m = np.float32([[1, 0, rand_shift_x], [0, 1, rand_shift_y]])

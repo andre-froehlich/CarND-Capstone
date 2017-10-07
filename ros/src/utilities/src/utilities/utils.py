@@ -134,7 +134,6 @@ def squared_dist(pose_1, pose_2):
     dy = pose_1.pose.position.y - pose_2.pose.position.y
     return dx * dx + dy * dy
 
-
 # TODO Do we need this function?
 def distance(waypoints, wp1, wp2):
     dist = 0

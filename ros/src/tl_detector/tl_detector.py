@@ -77,7 +77,7 @@ class TLDetector(object):
             #     state = self.lights[0].state
             # End testing
 
-            # rospy.logwarn("Next traffic light wp index={}, state={}".format(index, state))
+            rospy.loginfo("Next traffic light wp index={}, state={}".format(index, state))
             if state == TrafficLight.GREEN or state == TrafficLight.UNKNOWN:
                 index = -1
             self.upcoming_red_light_pub.publish(Int32(index))
@@ -105,7 +105,7 @@ class TLDetector(object):
     def traffic_cb(self, msg):
         # Unsubscribe?
         # if self.lights is None:
-            # rospy.logwarn(msg)
+        #     rospy.logwarn(msg)
         self.lights = msg.lights
 
     def save_data(self):
@@ -256,7 +256,8 @@ class TLDetector(object):
                                                                                 self.waypoints.waypoints,
                                                                                 skip_orientation_check=True)[0])
 
-                    # rospy.logwarn("sl_pose.x={}, y={}".format(stop_line_pose.pose.position.x, stop_line_pose.pose.position.y))
+                    rospy.logdebug("sl_pose.x={}, y={}".format(stop_line_pose.pose.position.x,
+                                                              stop_line_pose.pose.position.y))
 
 
             index_stop_line, _ = utils.get_next(self.pose, self.stop_line_waypoints)

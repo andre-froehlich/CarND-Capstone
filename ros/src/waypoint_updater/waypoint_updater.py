@@ -6,7 +6,6 @@ from styx_msgs.msg import Lane
 from std_msgs.msg import Int32
 from utilities import utils
 import math
-import sys
 from copy import deepcopy
 
 '''
@@ -25,10 +24,9 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
-BRAKING_DISTANCE = 50
 COMFORTABLE_DECEL = -2.0
-MAX_DECEL = -5.0
-STOP_CORRIDOR = 5
+MAX_DECEL = -4.0
+STOP_CORRIDOR = 7
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -52,6 +50,7 @@ class WaypointUpdater(object):
         self.traffic_waypoint_index = -1
         self.is_braking_active = False
         self.current_velocity = 0.0
+        self.last_zeroed_waypoints = None
 
         self.loop()
 
@@ -68,6 +67,7 @@ class WaypointUpdater(object):
                 # Check, how far ahead of current pose is the red traffic light
                 # rospy.logwarn("tl_index={}, closest_index={}".format(self.traffic_waypoint_index, closest_index))
                 # delta_index = sys.maxint
+                is_deepcopy = False
                 if self.traffic_waypoint_index != -1:  # red or yellow light ahead
                     if not self.is_braking_active:
                         delta_index = self.traffic_waypoint_index - closest_index
@@ -76,19 +76,16 @@ class WaypointUpdater(object):
                         self.is_braking_active = self.adapt_speed(closest_index, delta_index)
                 else:  # green or unknown light ahead
                     if self.is_braking_active:
-                        self.working_waypoints = deepcopy(self.base_waypoints)
+                        i = closest_index
+                        while i != (self.last_zeroed_waypoints + 1):
+                            wp = self.base_waypoints.waypoints[i]
+                            self.set_waypoint_velocity(self.working_waypoints.waypoints[i], self.get_waypoint_velocity(wp))
+                            i += 1
+                            if i >= self.len_waypoints:
+                                i = 0
                         self.is_braking_active = False
 
-                # if self.is_braking_active:
-                #     if delta_index > BRAKING_DISTANCE:
-                #         self.working_waypoints = deepcopy(self.base_waypoints)
-                #         self.is_braking_active = False
-                # else:
-                #     if delta_index <= BRAKING_DISTANCE:
-                #         self.adapt_speed(closest_index, delta_index)
-                #         self.is_braking_active = True
-
-                if (closest_index < self.len_waypoints - self.lookahead_wps):
+                if closest_index < self.len_waypoints - self.lookahead_wps:
                     final_waypoints = self.working_waypoints.waypoints[closest_index:closest_index + self.lookahead_wps]
                 else:
                     final_waypoints = self.working_waypoints.waypoints[closest_index:]
@@ -160,20 +157,22 @@ class WaypointUpdater(object):
         '''
 
         # Calculate necessary deceleration to stop in time
-        a = -0.5 * v0v0  / dist
+        a = -0.5 * v0v0 / dist
         rospy.loginfo("Space for braking={}, Deceleration={}".format(dist, a))
         if a < MAX_DECEL:
             rospy.logwarn("Too late to stop. Deceleration exceeds safety limit.")
-            return False # Not braking
+            return False  # Not braking
 
-        # Set velocity to 0.0 for everything between stop_index and current_index
+        # Set velocity to -0.1 for everything between stop_index and current_index
+        # to keep breaking
         # current_index to start_index is left unchanged.
         i = stop_index
-        while i != current_index:
-            self.set_waypoint_velocity(self.working_waypoints.waypoints[i], 0.0)
+        while i != stop_index + LOOKAHEAD_WPS:
+            self.set_waypoint_velocity(self.working_waypoints.waypoints[i], -0.1)
             i += 1
-            if (i >= self.len_waypoints):
+            if i >= self.len_waypoints:
                 i = 0
+        self.last_zeroed_waypoints = i
 
         # Beginning from stop_index with velocity 0
         # iterate backwards and continuously increase velocity until either
@@ -185,13 +184,13 @@ class WaypointUpdater(object):
         while i != start_index:
             dist = self.wp_dists[i]
             v = math.sqrt(last_speed * last_speed - 2 * dist * a)
-            if (v < self.get_waypoint_velocity(self.working_waypoints.waypoints[i])):
+            if v < self.get_waypoint_velocity(self.working_waypoints.waypoints[i]):
                 self.set_waypoint_velocity(self.working_waypoints.waypoints[i], v)
                 last_speed = v
             else:
                 break
             i -= 1
-            if (i < 0):
+            if i < 0:
                 i = self.len_waypoints - 1
 
         return True  # Braking
@@ -206,7 +205,7 @@ class WaypointUpdater(object):
             self.base_waypoints = waypoints
             self.len_waypoints = len(self.base_waypoints.waypoints)
             self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints)
-            self.working_waypoints = deepcopy(self.base_waypoints)
+            self.working_waypoints = deepcopy(waypoints)
 
             cummulated_dist = 0.0
             for i in range(self.len_waypoints - 1):
@@ -240,9 +239,9 @@ class WaypointUpdater(object):
     def set_waypoint_velocity(waypoint, velocity):
         waypoint.twist.twist.linear.x = velocity
 
-    # @staticmethod
-    # def set_waypoint_velocity2(waypoints, waypoint, velocity):
-    #     waypoints[waypoint].twist.twist.linear.x = velocity
+        # @staticmethod
+        # def set_waypoint_velocity2(waypoints, waypoint, velocity):
+        #     waypoints[waypoint].twist.twist.linear.x = velocity
 
 
 if __name__ == '__main__':

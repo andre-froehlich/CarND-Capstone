@@ -1,4 +1,4 @@
-name: capstone
+name: capstone-gpu
 dependencies:
     - python==2.7.12
     - opencv
@@ -14,6 +14,6 @@ dependencies:
         - Pillow>=2.2.1
         - scipy>=0.13.3
         - keras==1.2.0
-        - tensorflow==1.0.0
+        - tensorflow-gpu==1.0.0
         - h5py>=2.6.0
         - pygame>=1.9.3

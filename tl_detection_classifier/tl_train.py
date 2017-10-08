@@ -1,4 +1,4 @@
-from sklearn.model_selection import train_test_split
+from sklearn.cross_validation import train_test_split
 import matplotlib.pyplot as plt
 from tl_train_helper import *
 from augmentation import *
@@ -8,16 +8,27 @@ import keras
 from keras.models import Sequential
 from keras.layers import Flatten, Dense, Lambda, Cropping2D, Dropout
 from keras.layers.convolutional import Conv2D
+from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import MaxPooling2D
 
-# Load dataset to train and validate on as pandas DataFrame
-#root_path = '/Users/jakobkammerer/Google Drive/Happy Robots/train/'
-root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
-source = 'simulator/'
-fformat='*.png'
-data_frames = import_data(root_path, source, fformat)
-# print(data_frames[0])
+import tensorflow
 
+print("Keras version: {}".format(keras.__version__))
+print("Tensorflow version: {}".format(tensorflow.__version__))
+
+# Load dataset to train and validate on as pandas DataFrame
+# root_path = '/Users/jakobkammerer/Google Drive/Happy Robots/train/'
+# root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
+root_path = '../training_data/'
+source = 'simulator/'
+fformat = '*.png'
+# source = 'real/'
+# fformat = '*.jpg'
+data_frames = import_data(root_path, source, fformat)
+print(data_frames[0])
+# print(data_frames[1])
+# print(data_frames[2])
+# print(data_frames[3])
 
 # Balance the dataset
 # samples_df_bal = balance_dataset(samples_df)
@@ -28,8 +39,8 @@ for i in range(len(data_frames)):
     samples_by_state.append([])
     file_paths = data_frames[i]['file_path'].as_matrix()
     for path in file_paths:
-        img = cv2.imread(path)
-        samples_by_state[i].append(img)
+        # img = cv2.imread(path)
+        samples_by_state[i].append(path)
 
 # print(len(samples_by_state))
 # print (len(samples_by_state[0]))
@@ -51,7 +62,7 @@ for samples in samples_by_state:
     i += 1
 
 # Set up generators
-batch_size = 32
+batch_size = 16
 train_generator = generator_v2(train_samples_by_state, batch_size=batch_size)
 val_generator = generator_v2(val_samples_by_state, batch_size=batch_size)
 
@@ -66,24 +77,23 @@ for i in range(len(X)):
         state += str(s)
     cv2.imwrite("generator_output/sample{}_state{}.png".format(i, state), X[i])
 
-exit()
-
 #
 #  Model
 #
+
 model = Sequential([
     # Normalize
     Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(600, 800, 3)),
 
     # Convolutional Layers
-    Conv2D(filters=6,
-           kernel_size=(5, 5),
-           strides=5,
-           activation='relu'),
+    Convolution2D(nb_filter=6,
+                  nb_row=5,
+                  nb_col=5,
+                  activation='relu'),
     MaxPooling2D(),
-    Conv2D(filters=16,
-           kernel_size=(5, 5),
-           strides=5,
+    Conv2D(nb_filter=16,
+           nb_row=5,
+           nb_col=5,
            activation='relu'),
     MaxPooling2D(),
     Dropout(0.5),
@@ -103,12 +113,13 @@ model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 #                            validation_data=val_generator,
 #                            nb_val_samples=len(val_samples) * 2,
 #                            nb_epoch=2)
+
 hist = model.fit_generator(train_generator,
-                           steps_per_epoch=1,
-                           epochs=10,
+                           samples_per_epoch=batch_size * 1,
+                           nb_epoch=2,
                            verbose=1,
                            validation_data=val_generator,
-                           validation_steps=1)
+                           nb_val_samples=batch_size * 1)
 
 # Save the model
 model.save('model/model.h5')
@@ -116,6 +127,7 @@ model.save('model/model.h5')
 print hist.history
 
 # Plot and history
+'''
 plt.plot(hist.history['loss'])
 plt.plot(hist.history['val_loss'])
 plt.plot(hist.history['acc'])
@@ -126,3 +138,4 @@ plt.xlabel('epoch')
 plt.legend(['Training Loss', 'Validation Loss', 'Training Accuracy', 'Validation Accuracy'], loc='upper right')
 plt.show()
 plt.savefig('history.png')
+'''

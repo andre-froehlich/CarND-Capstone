@@ -21,11 +21,10 @@ root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
 source = 'simulator/'
 fformat='*.png'
 data_frames = import_data(root_path, source, fformat)
-# print(data_frames[0])
+print(data_frames[0])
 # print(data_frames[1])
 # print(data_frames[2])
 # print(data_frames[3])
-
 
 # Balance the dataset
 # samples_df_bal = balance_dataset(samples_df)
@@ -36,8 +35,8 @@ for i in range(len(data_frames)):
     samples_by_state.append([])
     file_paths = data_frames[i]['file_path'].as_matrix()
     for path in file_paths:
-        img = cv2.imread(path)
-        samples_by_state[i].append(img)
+        # img = cv2.imread(path)
+        samples_by_state[i].append(path)
 
 # print(len(samples_by_state))
 # print (len(samples_by_state[0]))
@@ -124,6 +123,7 @@ model.save('model/model.h5')
 print hist.history
 
 # Plot and history
+'''
 plt.plot(hist.history['loss'])
 plt.plot(hist.history['val_loss'])
 plt.plot(hist.history['acc'])
@@ -134,3 +134,4 @@ plt.xlabel('epoch')
 plt.legend(['Training Loss', 'Validation Loss', 'Training Accuracy', 'Validation Accuracy'], loc='upper right')
 plt.show()
 plt.savefig('history.png')
+'''

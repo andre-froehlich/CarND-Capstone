@@ -117,7 +117,8 @@ def generator_v2(samples_by_state, batch_size=32, augment=True):
         for i in range(batch_size):
             sample_class = np.random.randint(4)
             sample_index = np.random.randint(len(samples_by_state[sample_class]))
-            image = samples_by_state[sample_class][sample_index]
+            path = samples_by_state[sample_class][sample_index]
+            image = cv2.imread(path)
             if augment:
                 image = augmentation_pipeline(image)
             y_onehot = [0] * 4

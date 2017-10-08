@@ -36,6 +36,7 @@ EPSILON_STEER = 0.05
 
 
 class DBWNode(object):
+    test = False
     def __init__(self):
         rospy.init_node('dbw_node', log_level=rospy.DEBUG)
 
@@ -49,9 +50,9 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
-        kp = rospy.get_param('~kp', .0)
-        ki = rospy.get_param('~ki', .0)
-        kd = rospy.get_param('~kd', .0)
+        kp = rospy.get_param('~kp', 1.0)
+        ki = rospy.get_param('~ki', 0.0)
+        kd = rospy.get_param('~kd', 0.0)
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd', SteeringCmd, queue_size=1)
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd', ThrottleCmd, queue_size=1)
@@ -68,7 +69,7 @@ class DBWNode(object):
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
 
         # Members
-        self.dbw_enabled = True
+        self.dbw_enabled = True  # TODO: should be initialized with False! currently not possible since simulator sends no dbw_enabled
         self.current_velocity = None
         self.twist_cmd = None
         self.last_throttle = 0.0
@@ -95,26 +96,34 @@ class DBWNode(object):
             if (self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None):
                 throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
 
-                rospy.loginfo("Current_v={}, twist_v={}, Throttle={}, Brake={}, Steer={}, twist_angular_z={}".
-                              format(self.current_velocity.twist.linear.x, self.twist_cmd.twist.linear.x,
-                                     throttle, brake, steer, self.twist_cmd.twist.angular.z))
+                # if self.twist_cmd.twist.linear.x <= 0.0:
+                #     self.test = True
+                #
+                # if self.test and self.twist_cmd.twist.linear.x > 0.0:
+                #     rospy.logwarn("v_ref was 0 and is now higher")
+                #     self.test = False
+
+                # rospy.loginfo("Current_v={}, twist_v={}, Throttle={}, Brake={}, Steer={}, twist_angular_z={}".
+                #               format(self.current_velocity.twist.linear.x, self.twist_cmd.twist.linear.x,
+                #                      throttle, brake, steer, self.twist_cmd.twist.angular.z))
+
                 self.publish(throttle, brake, steer)
 
             elif not self.dbw_enabled:
                 self.controller.reset()
 
-            if len(self.controller.twist_values[0]) > 50:
-                dbg_msg = Debug()
-                dbg_msg.v_ref       = self.controller.twist_values[0]
-                dbg_msg.v_cur       = self.controller.twist_values[1]
-                dbg_msg.brake       = self.controller.twist_values[2]
-                dbg_msg.throttle    = self.controller.twist_values[3]
-                dbg_msg.v_err       = self.controller.twist_values[4]
-                dbg_msg.lowpass_out = self.controller.twist_values[5]
-                # dbg_msg.steer       = self.controller.twist_values[6]
-                # dbg_msg.twist_linear_x  = self.controller.twist_values[7]
-                # dbg_msg.twist_angular_z = self.controller.twist_values[8]
-                self.debug_publisher.publish(dbg_msg)
+            # if len(self.controller.twist_values[0]) > 50:
+            #     dbg_msg = Debug()
+            #     dbg_msg.v_ref       = self.controller.twist_values[0]
+            #     dbg_msg.v_cur       = self.controller.twist_values[1]
+            #     dbg_msg.brake       = self.controller.twist_values[2]
+            #     dbg_msg.throttle    = self.controller.twist_values[3]
+            #     dbg_msg.v_err       = self.controller.twist_values[4]
+            #     dbg_msg.lowpass_out = self.controller.twist_values[5]
+            #     # dbg_msg.steer       = self.controller.twist_values[6]
+            #     # dbg_msg.twist_linear_x  = self.controller.twist_values[7]
+            #     # dbg_msg.twist_angular_z = self.controller.twist_values[8]
+            #     self.debug_publisher.publish(dbg_msg)
 
             rate.sleep()
 
@@ -158,11 +167,12 @@ class DBWNode(object):
             # rospy.loginfo(
             #     "Did no issue steer command, value={}, last value={}".format(steer, self.last_steer))
 
-        if (abs(self.last_brake - brake) > EPSILON_BRAKE):
+        # self.current_velocity <= 0 to keep braking on traffic light
+        if abs(self.last_brake - brake) > EPSILON_BRAKE or self.current_velocity <= 0:
             self.last_brake = brake
             bcmd = BrakeCmd()
             bcmd.enable = True
-            # has to be percentage since we derive brake from throttle
+            # braking only works with torque...
             bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
             bcmd.pedal_cmd = brake
             self.brake_pub.publish(bcmd)

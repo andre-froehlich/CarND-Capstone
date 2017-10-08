@@ -1,4 +1,4 @@
-from sklearn.model_selection import train_test_split
+from sklearn.cross_validation import train_test_split
 import matplotlib.pyplot as plt
 from tl_train_helper import *
 from augmentation import *
@@ -12,14 +12,18 @@ from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import MaxPooling2D
 
 import tensorflow
+
 print("Keras version: {}".format(keras.__version__))
 print("Tensorflow version: {}".format(tensorflow.__version__))
 
 # Load dataset to train and validate on as pandas DataFrame
-#root_path = '/Users/jakobkammerer/Google Drive/Happy Robots/train/'
-root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
+# root_path = '/Users/jakobkammerer/Google Drive/Happy Robots/train/'
+# root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
+root_path = '../training_data/'
 source = 'simulator/'
-fformat='*.png'
+fformat = '*.png'
+# source = 'real/'
+# fformat = '*.jpg'
 data_frames = import_data(root_path, source, fformat)
 print(data_frames[0])
 # print(data_frames[1])

@@ -8,7 +8,12 @@ import keras
 from keras.models import Sequential
 from keras.layers import Flatten, Dense, Lambda, Cropping2D, Dropout
 from keras.layers.convolutional import Conv2D
+from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import MaxPooling2D
+
+import tensorflow
+print("Keras version: {}".format(keras.__version__))
+print("Tensorflow version: {}".format(tensorflow.__version__))
 
 # Load dataset to train and validate on as pandas DataFrame
 #root_path = '/Users/jakobkammerer/Google Drive/Happy Robots/train/'
@@ -17,6 +22,9 @@ source = 'simulator/'
 fformat='*.png'
 data_frames = import_data(root_path, source, fformat)
 # print(data_frames[0])
+# print(data_frames[1])
+# print(data_frames[2])
+# print(data_frames[3])
 
 
 # Balance the dataset
@@ -51,7 +59,7 @@ for samples in samples_by_state:
     i += 1
 
 # Set up generators
-batch_size = 32
+batch_size = 16
 train_generator = generator_v2(train_samples_by_state, batch_size=batch_size)
 val_generator = generator_v2(val_samples_by_state, batch_size=batch_size)
 
@@ -66,24 +74,23 @@ for i in range(len(X)):
         state += str(s)
     cv2.imwrite("generator_output/sample{}_state{}.png".format(i, state), X[i])
 
-exit()
-
 #
 #  Model
 #
+
 model = Sequential([
     # Normalize
     Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(600, 800, 3)),
 
     # Convolutional Layers
-    Conv2D(filters=6,
-           kernel_size=(5, 5),
-           strides=5,
-           activation='relu'),
+    Convolution2D(nb_filter=6,
+                  nb_row=5,
+                  nb_col=5,
+                  activation='relu'),
     MaxPooling2D(),
-    Conv2D(filters=16,
-           kernel_size=(5, 5),
-           strides=5,
+    Conv2D(nb_filter=16,
+           nb_row=5,
+           nb_col=5,
            activation='relu'),
     MaxPooling2D(),
     Dropout(0.5),
@@ -103,12 +110,13 @@ model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 #                            validation_data=val_generator,
 #                            nb_val_samples=len(val_samples) * 2,
 #                            nb_epoch=2)
+
 hist = model.fit_generator(train_generator,
-                           steps_per_epoch=1,
-                           epochs=10,
+                           samples_per_epoch=batch_size * 1,
+                           nb_epoch=2,
                            verbose=1,
                            validation_data=val_generator,
-                           validation_steps=1)
+                           nb_val_samples=batch_size * 1)
 
 # Save the model
 model.save('model/model.h5')

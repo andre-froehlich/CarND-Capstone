@@ -3,6 +3,7 @@ from yaw_controller import YawController
 from lowpass import LowPassFilter
 import rospy
 import time
+from dbw_mkz_msgs.msg import BrakeCmd
 
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
@@ -15,6 +16,7 @@ class Controller(object):
 
         self.wheel_radius = wheel_radius
         self.brake_deadband = brake_deadband
+        self.deadband_torque = BrakeCmd.TORQUE_MAX * self.brake_deadband
         self.total_mass = vehicle_mass + fuel_capacity * GAS_DENSITY
         self.decel_limit = decel_limit
 
@@ -48,7 +50,7 @@ class Controller(object):
         self.last_t = time.time()
         # calculating error
         error_v = twist_linear_x - current_velocity_x
-        # rospy.logwarn("twist_linear_x={}\tcurrent_v={}\terror_v={}\n".format(twist_linear_x, current_velocity_x, error_v))
+        # rospy.logwarn("twist_linear_x={}\tcurrent_v={}\terror_v={}".format(twist_linear_x, current_velocity_x, error_v))
         # getting throttle from pid controller with error_v and delta_t
         # keeping it between 0.0 and 1.0
 
@@ -56,19 +58,26 @@ class Controller(object):
         a = self.low_pass_filter.filt(self.pid.step(error_v, delta_t))
 
         # if a < 0:
-        if abs(error_v) < 0.5:
-            # only correct when abs(error_v) smaller than 0.5
+        if 0.0 < error_v < 0.5:
+            # only correct when abs(error_v) greater than 0.5
             brake = 0.0
-            throttle = 0.0
-        elif error_v < 0:
-            # error_v smaller zero means braking
+            throttle = a * 0.75 if a > 0.0 else 0.0
+        elif error_v <= 0 or twist_linear_x < 0:
+            # error_v or twist_linear_x smaller zero means braking
             # limit to 1.0 and set throttle to 0.0
             # brake = max(error_v, 1.0)
-
             brake = -a * self.total_mass * self.wheel_radius
-            if brake < self.brake_deadband:
+
+
+            # keep braking as long as twist velocity < 0
+            if brake > 0.0 and twist_linear_x < 0:
+                brake = BrakeCmd.TORQUE_MAX * 0.5
+            elif brake < self.deadband_torque:
                 brake = 0.0
             throttle = 0.0
+
+            # rospy.logwarn("twist_linear_x={}\terror_v={}\tbrake={}".format(twist_linear_x, error_v, brake))
+
         else:
             brake = 0.0
             throttle = min(1.0, a)

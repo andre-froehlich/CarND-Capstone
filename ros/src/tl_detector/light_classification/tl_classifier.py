@@ -10,7 +10,7 @@ import numpy as np
 class TLClassifier(object):
     def __init__(self):
         # file has to be in 'tl_detector' folder
-        model_path = '201710081757_model_sim.h5'
+        model_path = 'model.h5'
         model_file = h5py.File(model_path, mode='r')
         model_version = model_file.attrs.get('keras_version')
         keras_version = str(keras.__version__).encode('utf8')
@@ -34,7 +34,7 @@ class TLClassifier(object):
 
         """
         start = time.time()
-        image = cv2.resize(image, (300, 225), interpolation=cv2.INTER_CUBIC)
+        image = cv2.resize(image, (299, 299), interpolation=cv2.INTER_CUBIC)
         #
         # if not self.image_written:
         #     cv2.imwrite("foo.jpg", image)

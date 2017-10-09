@@ -8,7 +8,7 @@ import cv2
 
 from augmentation import *
 
-#src = '/Users/jakobkammerer/Learning/carnd/'
+# src = '/Users/jakobkammerer/Learning/carnd/'
 
 
 def import_data(root_path, source, fformat):
@@ -46,6 +46,7 @@ def get_dataset(df):
     dataset = [[file_paths[i], labels[i]] for i in range(len(file_paths))]
 
     return dataset
+
 
 def balance_dataset(df):
     """
@@ -106,7 +107,8 @@ def balance_dataset(df):
 
     return df_bal
 
-def generator_v2(samples_by_state, batch_size=32, augment=True):
+
+def generator_v2(samples_by_state, batch_size=32, augment=True, resize=None):
     for samples in samples_by_state:
         sklearn.utils.shuffle(samples)
 
@@ -119,6 +121,8 @@ def generator_v2(samples_by_state, batch_size=32, augment=True):
             sample_index = np.random.randint(len(samples_by_state[sample_class]))
             path = samples_by_state[sample_class][sample_index]
             image = cv2.imread(path)
+            if resize is not None:
+                image = cv2.resize(image, resize, interpolation=cv2.INTER_CUBIC)
             if augment:
                 image = augmentation_pipeline(image)
             y_onehot = [0] * 4
@@ -129,6 +133,7 @@ def generator_v2(samples_by_state, batch_size=32, augment=True):
 
         X, y = sklearn.utils.shuffle(X, y)
         yield np.array(X), np.array(y)
+
 
 def generator(samples, batch_size=32):
     num_samples = len(samples)

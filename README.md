@@ -3,7 +3,7 @@
 Team    | Name              | E-Mail                            | GitHub
 ----    | ------------      | -------------                     | ------
 Lead    | Andre Fröhlich    | andre_froehlich@me.com            | @froehlich
-Member  | Christian Rost    | christian.rost@auto-nomous.com    | *tba*
+Member  | Christian Rost    | christian.rost@auto-nomous.com    | @christian-rost
 Member  | Jakob Kammerer    | jakob.kammerer@gmail.com          | @jxkxb
 Member  | Marc Reichelt     | mcreichelt@gmail.com              | @mreichelt
 Member  | Simon Ritzel      | simon.ritzel@gmail.com            | @SiRi13

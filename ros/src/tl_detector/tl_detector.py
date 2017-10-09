@@ -16,6 +16,7 @@ from light_classification.tl_classifier import TLClassifier
 
 STATE_COUNT_THRESHOLD = 3
 
+
 class TLDetector(object):
     def __init__(self):
         rospy.init_node('tl_detector', log_level=rospy.WARN)
@@ -208,7 +209,6 @@ class TLDetector(object):
         # if not self.has_image:
         #     self.prev_light_loc = None
         #     return False
-        '''
         if self.camera_image is None:
             return TrafficLight.UNKNOWN
         else:
@@ -216,15 +216,15 @@ class TLDetector(object):
 
             # x, y = self.project_to_image_plane(light.pose.pose.position)
             # TODO use light location to zoom in on traffic light in image
-
-            # Get classification
+            if self.lights is not None:
+                print('light is {}'.format(self.lights[0].state))
             return self.light_classifier.get_classification(cv_image)
-        '''
-        state = 0
-        if self.lights is not None:
-            state = self.lights[0].state
 
-        return state
+        # state = 0
+        # if self.lights is not None:
+        #     state = self.lights[0].state
+        #
+        # return state
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -288,8 +288,6 @@ class TLDetector(object):
         # if light:
         #     state = self.get_light_state(light)
         #     return light_wp, state
-
-
 
 
 if __name__ == '__main__':

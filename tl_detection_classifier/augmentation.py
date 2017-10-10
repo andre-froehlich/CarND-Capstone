@@ -33,6 +33,7 @@ def augmentation_pipeline(img):
 
     return img
 
+
 def aug_brightness(img_in):
     """
     Augment picture in brightness
@@ -131,6 +132,7 @@ def aug_shift(img_in):
                                (np.shape(img_in)[1], np.shape(img_in)[0]))
 
     return img_shift
+
 
 def aug_flip(img_in):
     """

@@ -3,6 +3,7 @@ import sys
 import glob
 import argparse
 import matplotlib
+
 # so we can save images from matplotlib on AWS
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ from keras.optimizers import SGD
 
 from tl_train_helper import *
 from augmentation import *
+import pickle
 
 IM_WIDTH, IM_HEIGHT = 299, 299  # fixed size for InceptionV3
 INCEPTION_SIZE = (IM_WIDTH, IM_HEIGHT)
@@ -94,21 +96,15 @@ def setup_to_finetune(model):
     model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
 
 
-def plot_training(history):
-    acc = history.history['acc']
-    val_acc = history.history['val_acc']
-    loss = history.history['loss']
-    val_loss = history.history['val_loss']
-    epochs = range(len(acc))
-
-    plt.plot(epochs, acc, 'r.')
-    plt.plot(epochs, val_acc, 'r')
-    plt.title('Training and validation accuracy')
-
-    plt.figure()
-    plt.plot(epochs, loss, 'r.')
-    plt.plot(epochs, val_loss, 'r-')
-    plt.title('Training and validation loss')
+def plot_training(hist):
+    plt.plot(hist.history['loss'])
+    plt.plot(hist.history['val_loss'])
+    plt.plot(hist.history['acc'])
+    plt.plot(hist.history['val_acc'])
+    plt.title('model mean squared error loss')
+    plt.ylabel('mean squared error loss')
+    plt.xlabel('epoch')
+    plt.legend(['Training Loss', 'Validation Loss', 'Training Accuracy', 'Validation Accuracy'], loc='upper right')
     plt.savefig('history.png')
 
 
@@ -142,6 +138,9 @@ def train():
         class_weight='auto')
 
     model.save('model.h5')
+
+    # dump history for later use
+    pickle.dump(history_ft.history, open("history.pickle", "wb"))
 
     plot_training(history_ft)
 

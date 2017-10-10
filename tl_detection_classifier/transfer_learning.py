@@ -56,8 +56,8 @@ for samples in samples_by_state:
     i += 1
 
 # Set up generators
-train_generator = generator_v2(train_samples_by_state, batch_size=BATCH_SIZE, resize=INCEPTION_SIZE)
-validation_generator = generator_v2(val_samples_by_state, batch_size=BATCH_SIZE, resize=INCEPTION_SIZE)
+train_generator = generator_v2(train_samples_by_state, batch_size=BATCH_SIZE, resize=INCEPTION_SIZE, augment=False)
+validation_generator = generator_v2(val_samples_by_state, batch_size=BATCH_SIZE, resize=INCEPTION_SIZE, augment=False)
 
 
 def setup_to_transfer_learn(model, base_model):

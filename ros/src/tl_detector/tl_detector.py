@@ -11,6 +11,7 @@ from std_msgs.msg import Int32
 from styx_msgs.msg import Lane, Waypoint
 from styx_msgs.msg import TrafficLightArray, TrafficLight
 from utilities import utils
+import numpy as np
 
 from light_classification.tl_classifier import TLClassifier
 
@@ -53,6 +54,7 @@ class TLDetector(object):
 
         self.state = TrafficLight.UNKNOWN
         self.last_state = TrafficLight.UNKNOWN
+        self.last_state_array = np.zeros(10, dtype=np.uint8)
         self.last_wp = -1
         self.state_count = 0
         # self.has_image = False
@@ -64,6 +66,8 @@ class TLDetector(object):
             self.state_file = open("../../../training_data/state.txt", "w")
 
         self.loop()
+
+
 
     def loop(self):
         rate = rospy.Rate(10)
@@ -217,8 +221,19 @@ class TLDetector(object):
             # x, y = self.project_to_image_plane(light.pose.pose.position)
             # TODO use light location to zoom in on traffic light in image
             if self.lights is not None:
-                print('light is {}'.format(self.lights[0].state))
-            return self.light_classifier.get_classification(cv_image)
+                print('Simulator Light State {}'.format(self.lights[0].state))
+
+            new_state = np.uint8(self.light_classifier.get_classification(cv_image))
+
+            # Delete first item in last state array
+            self.last_state_array = np.delete(self.last_state_array, 0)
+            self.last_state_array = np.append(self.last_state_array, new_state)
+
+            modal_value = np.argmax(np.bincount(self.last_state_array))
+
+            rospy.logerr("Predicted: {}; Modalwert: {}; Last State Array {}".format(new_state, modal_value, self.last_state_array))
+
+            return modal_value
 
         # state = 0
         # if self.lights is not None:

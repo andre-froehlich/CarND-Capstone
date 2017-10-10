@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import argparse
+import matplotlib
 import matplotlib.pyplot as plt
 
 from sklearn.cross_validation import train_test_split
@@ -16,9 +17,12 @@ from keras.optimizers import SGD
 from tl_train_helper import *
 from augmentation import *
 
+# so we can save images from matplotlib on AWS
+matplotlib.use('Agg')
+
 IM_WIDTH, IM_HEIGHT = 299, 299  # fixed size for InceptionV3
 INCEPTION_SIZE = (IM_WIDTH, IM_HEIGHT)
-NB_EPOCHS = 3
+NB_EPOCHS = 2
 BATCH_SIZE = 32
 FC_SIZE = 1024
 NB_CLASSES = 4
@@ -122,9 +126,9 @@ def train():
     history_tl = model.fit_generator(
         train_generator,
         nb_epoch=NB_EPOCHS,
-        samples_per_epoch=BATCH_SIZE * 1,
+        samples_per_epoch=BATCH_SIZE * 100,
         validation_data=validation_generator,
-        nb_val_samples=BATCH_SIZE * 1,
+        nb_val_samples=BATCH_SIZE * 10,
         class_weight='auto')
 
     # fine-tuning
@@ -132,10 +136,10 @@ def train():
 
     history_ft = model.fit_generator(
         train_generator,
-        samples_per_epoch=BATCH_SIZE * 1,
+        samples_per_epoch=BATCH_SIZE * 100,
         nb_epoch=NB_EPOCHS,
         validation_data=validation_generator,
-        nb_val_samples=BATCH_SIZE * 1,
+        nb_val_samples=BATCH_SIZE * 10,
         class_weight='auto')
 
     model.save('model.h5')

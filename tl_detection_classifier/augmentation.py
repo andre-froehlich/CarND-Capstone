@@ -1,40 +1,82 @@
 import cv2
 import numpy as np
+from scipy.stats import truncnorm
+
+def get_trunc_norm(params):
+    return truncnorm((params[0] - params[2]) / params[3],
+                     (params[1] - params[2]) / params[3],
+                     loc=params[2],
+                     scale=params[3])
 
 
-def augmentation_pipeline(img):
-    if np.random.randint(2) == 1:
+def augmentation_pipeline(img,
+                          brightness=None,
+                          color=None,
+                          shadow=None,
+                          blur=None,
+                          shift=None,
+                          rot=None,
+                          perspective=None,
+                          aug_prob=0.5,
+                          flip_prob=0.5):
+
+    # Check, if augment at all
+    if np.random.random() > aug_prob:
         return img
 
-    # Brightness 50/50
-    if np.random.randint(2) == 1:
-        img = aug_brightness(img)
-    # Color 50/50
-    if np.random.randint(2) == 1:
-        img = aug_color(img)
-    # Shadow 50/50
-    if np.random.randint(2) == 1:
+    # Change brightness
+    if brightness is not None:
+        if brightness:
+            img = aug_brightness(img)
+        else:
+            img = aug_brightness(img, brightness)
+
+    # Augment color
+    if color is not None:
+        if color:
+            img = aug_color(img)
+        else:
+            img = aug_color(img, color)
+
+    # Add Shadow
+    if shadow is not None:
         img = aug_shadow(img)
-    # Blur 50/50
-    if np.random.randint(2) == 1:
-        img = aug_blur(img)
-    # Shift or Rotation
-    if np.random.randint(2) == 1:
-        if np.random.randint(2) == 1:
+
+    # Blur
+    if blur is not None:
+        if blur:
+            img = aug_blur(img)
+        else:
+            img = aug_blur(img, blur)
+
+    # Shift
+    if shift is not None:
+        if shift:
             img = aug_shift(img)
         else:
+            img = aug_shift(img, shift)
+
+    # Rotate
+    if rot is not None:
+        if rot:
             img = aug_rotation(img)
-    # Perspective Transform 50/50
-    if np.random.randint(2) == 1:
-        img = aug_perspective(img)
-    # Flip 50/50
-    if np.random.randint(2) == 1:
-        img = aug_flip(img)
+        else:
+            img = aug_rotation(img, rot)
+
+    # Perspective transform
+    if perspective is not None:
+        if perspective:
+            img = aug_perspective(img)
+        else:
+            img = aug_perspective(img, perspective)
+
+    # Flip
+    if np.random.random() <= flip_prob:
+        img = np.fliplr(img)
 
     return img
 
-
-def aug_brightness(img_in):
+def aug_brightness(img_in, params=(0.5, 1.5, 0.0, 1.0)):
     """
     Augment picture in brightness
     :param img_in: image in BGR (openCV standard)
@@ -44,7 +86,9 @@ def aug_brightness(img_in):
     img_out = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
     img_out = np.array(img_out, dtype=np.float64)
     # Set a random number for brightness adjustment and adjust
-    rand_bright = 0.5 + np.random.uniform()
+    rand_bright = get_trunc_norm(params).rvs()
+    print rand_bright
+
     img_out[:, :, 2] = img_out[:, :, 2] * rand_bright
     # set every value higher than 255 to 255
     img_out[:, :, 2][img_out[:, :, 2] > 255] = 255
@@ -54,6 +98,25 @@ def aug_brightness(img_in):
     img_out = cv2.cvtColor(img_out, cv2.COLOR_HSV2BGR)
     return img_out
 
+def aug_color(img_in, params=(-20.0, 20.0, 0.0, 10.0)):
+    """
+    Manipulates color channelwise by random (channel and value)
+    :param img_in: BGR image (cv2 standard)
+    :return: BGR image manipulated in color
+    """
+    # Convert to float64 array
+    img_out = np.array(img_in, dtype=np.float64)
+
+    distribution = get_trunc_norm(params)
+    for i in range(3):
+        rand_manipulation = round(distribution.rvs())
+        print(rand_manipulation)
+        img_out[:, :, i] = img_out[:, :, i] + rand_manipulation
+        img_out[:, :, i][img_out[:, :, i] > 255] = 255
+        img_out[:, :, i][img_out[:, :, i] < 0] = 0
+
+    # Convert back and return
+    return np.array(img_out, dtype=np.uint8)
 
 def aug_shadow(img_in):
     # Random values according to image size
@@ -95,36 +158,33 @@ def aug_shadow(img_in):
 
     return img_out
 
-
-def aug_blur(img_in):
+def aug_blur(img_in, params=(1.0, 5.0, 1.0, 1.5)):
     """
     Blurs the image
     :param img_in: BGR image (cv2 standard)
     :return: BGR image with blur
     """
-    rand_kernel_size = np.random.randint(low=5, high=21)
+    # rand_kernel_size =  abs(int(np.random.normal(0.0, 10.0)))
+    # rand_kernel_size = np.random.randint(low=5, high=21)
+    rand_kernel_size = int(round(get_trunc_norm((params)).rvs()))
     rand_kernel = (rand_kernel_size, rand_kernel_size)
-
     return cv2.blur(img_in, rand_kernel)
 
-
-def aug_shift(img_in):
+def aug_shift(img_in, params=(-0.05, 0.05, 0.0, 0.02)):
     """
     Shifts picture in x and y by random (max. 15 % of pixels)
     :param img_in: BGR image (cv2 standard)
     :return: BGR image shifted
     """
-    # Percentage
-    # rand_shift_x = np.random.randint(low=1, high=31) - 15
-    # rand_shift_y = np.random.randint(low=1, high=31) - 15
+    distribution = get_trunc_norm(params)
 
-    shift_x = np.random.normal(0.0, 0.05)
-    shift_y = np.random.normal(0.0, 0.05)
+    shift_x = distribution.rvs()
+    shift_y = distribution.rvs()
 
     # Pixels
     rand_shift_x = np.int(np.shape(img_in)[1] * shift_x)
     rand_shift_y = np.int(np.shape(img_in)[0] * shift_y)
-    # print rand_shift_x, rand_shift_y
+    print rand_shift_x, rand_shift_y
 
     # Shift
     shift_m = np.float32([[1, 0, rand_shift_x], [0, 1, rand_shift_y]])
@@ -133,39 +193,7 @@ def aug_shift(img_in):
 
     return img_shift
 
-
-def aug_flip(img_in):
-    """
-    flips image vertically
-    :param img_in: BGR image (cv2 standard)
-    :return: BRG image flipped
-    """
-    return np.fliplr(img_in)
-
-
-def aug_color(img_in):
-    """
-    Manipulates color channelwise by random (channel and value)
-    :param img_in: BGR image (cv2 standard)
-    :return: BGR image manipulated in color
-    """
-    # Convert to float64 array
-    img_out = np.array(img_in, dtype=np.float64)
-
-    # Random Color Channel and random manipulation
-    rand_color = np.random.randint(3)
-    rand_manipulation = np.random.randint(low=-20, high=21)
-
-    # Manipluation
-    img_out[:, :, rand_color] = img_out[:, :, rand_color] + rand_manipulation
-    img_out[:, :, rand_color][img_out[:, :, rand_color] > 255] = 255
-    img_out[:, :, rand_color][img_out[:, :, rand_color] < 0] = 0
-
-    # Convert back and return
-    return np.array(img_out, dtype=np.uint8)
-
-
-def aug_rotation(img_in):
+def aug_rotation(img_in, params=(-4.0, 4.0, 0.0, 1.0)):
     """
     Rotates the image
     :param img_in: BGR image (cv2 standard)
@@ -175,15 +203,14 @@ def aug_rotation(img_in):
     rows = np.shape(img_in)[0]
 
     # Random angle (degrees)
-    rand_angle = np.random.randint(low=-10, high=11)
+    rand_angle = get_trunc_norm(params).rvs()
 
     m = cv2.getRotationMatrix2D((cols / 2, rows / 2), rand_angle, 1)
     dst = cv2.warpAffine(img_in, m, (cols, rows))
 
     return dst
 
-
-def aug_perspective(img_in):
+def aug_perspective(img_in, params=(0.0, 0.01, 0.0, 0.005)):
     """
     Perspective transform of input image
     :param img_in: BGR image (cv2 standard)
@@ -192,19 +219,26 @@ def aug_perspective(img_in):
     height = np.shape(img_in)[0]
     width = np.shape(img_in)[1]
 
-    # Set maximum grab for perspective transform
-    percentage_width = int(0.1 * width)
-    percentage_height = int(0.1 * height)
+    distribution = get_trunc_norm(params)
 
     # Points for transformation
-    px1 = [0 + np.random.randint(percentage_width),
-           0 + np.random.randint(percentage_height)]
-    px2 = [width - np.random.randint(percentage_width),
-           0 + np.random.randint(percentage_height)]
-    px3 = [width - np.random.randint(percentage_width),
-           height - np.random.randint(percentage_height)]
-    px4 = [0 + np.random.randint(percentage_width),
-           height - np.random.randint(percentage_height)]
+    x = int(round(width * distribution.rvs()))
+    y = int(round(height * distribution.rvs()))
+    px1 = [x, y]
+
+    x = width - int(round(width * distribution.rvs()))
+    y = int(round(height * distribution.rvs()))
+    px2 = [x, y]
+
+    x = width - int(round(width * distribution.rvs()))
+    y = height - int(round(height * distribution.rvs()))
+    px3 = [x, y]
+
+    x = int(round(width * distribution.rvs()))
+    y = height - int(round(height * distribution.rvs()))
+    px4 = [x, y]
+
+    print px1, px2, px3, px4
 
     org = np.float32([px1, px2, px3, px4])
 

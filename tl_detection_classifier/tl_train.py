@@ -18,14 +18,14 @@ print("Tensorflow version: {}".format(tensorflow.__version__))
 
 # Load dataset to train and validate on as pandas DataFrame
 # root_path = '/Users/jakobkammerer/Google Drive/Happy Robots/train/'
-# root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
-root_path = '../training_data/'
+root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
+# root_path = '../training_data/'
 source = 'simulator/'
 fformat = '*.png'
 # source = 'real/'
 # fformat = '*.jpg'
 data_frames = import_data(root_path, source, fformat)
-print(data_frames[0])
+#print(data_frames[0])
 # print(data_frames[1])
 # print(data_frames[2])
 # print(data_frames[3])
@@ -77,6 +77,8 @@ for i in range(len(X)):
         state += str(s)
     cv2.imwrite("generator_output/sample{}_state{}.png".format(i, state), X[i])
 
+exit()
+
 #
 #  Model
 #
@@ -96,17 +98,15 @@ model = Sequential([
            nb_col=5,
            activation='relu'),
     MaxPooling2D(),
-    Dropout(0.5),
+    Dropout(0.3),
 
     # Fully connected layers
     Flatten(),
-    Dense(500, activation='relu'),
-    Dropout(0.5),
-    Dense(180, activation='relu'),
     Dense(84, activation='relu'),
-    Dense(4)])
+    Dropout(0.2),
+    Dense(4, activation='softmax')])
 
-model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 # hist = model.fit_generator(train_generator,
 #                            samples_per_epoch=len(train_samples) * 2,

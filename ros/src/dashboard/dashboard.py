@@ -423,6 +423,9 @@ class Dashboard(object):
             time = rospy.Time.now().to_nsec()
             cv_image = self._bridge.imgmsg_to_cv2(self._image, "bgr8")
 
+
+
+
             '''
             rospy.logwarn("Saved screenshot with state {} at time {}...".format(state, time))
 

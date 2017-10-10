@@ -3,6 +3,8 @@ import sys
 import glob
 import argparse
 import matplotlib
+# so we can save images from matplotlib on AWS
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from sklearn.cross_validation import train_test_split
@@ -16,9 +18,6 @@ from keras.optimizers import SGD
 
 from tl_train_helper import *
 from augmentation import *
-
-# so we can save images from matplotlib on AWS
-matplotlib.use('Agg')
 
 IM_WIDTH, IM_HEIGHT = 299, 299  # fixed size for InceptionV3
 INCEPTION_SIZE = (IM_WIDTH, IM_HEIGHT)

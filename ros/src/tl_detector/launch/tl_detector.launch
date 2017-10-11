@@ -1,7 +1,4 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="training" />
-    <node pkg="tl_detector" type="tl_detector.py" name="tl_detector" output="screen" cwd="node">
-        <param name="collect_training_data" value="$(arg training)" />
-    </node>
+    <node pkg="tl_detector" type="tl_detector.py" name="tl_detector" output="screen" cwd="node" />
 </launch>

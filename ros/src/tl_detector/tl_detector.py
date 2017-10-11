@@ -57,30 +57,17 @@ class TLDetector(object):
         self.last_state_array = np.zeros(10, dtype=np.uint8)
         self.last_wp = -1
         self.state_count = 0
-        # self.has_image = False
-
-        self.collect_training_data = rospy.get_param('~collect_training_data', False)
-        self.training_data_counter = 0
-        if self.collect_training_data:
-            rospy.logwarn("Collecting training data!")
-            self.state_file = open("../../../training_data/state.txt", "w")
 
         self.loop()
-
-
 
     def loop(self):
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            if self.collect_training_data:
-                self.save_data()
-
             index, state = self.process_traffic_lights()
 
             # TODO For testing: Car should stop at second traffic light
             # if index == 753:
             #     state = self.lights[0].state
-            # End testing
 
             rospy.loginfo("Next traffic light wp index={}, state={}".format(index, state))
             if state == TrafficLight.GREEN or state == TrafficLight.UNKNOWN:
@@ -105,32 +92,13 @@ class TLDetector(object):
         # TODO: Unsubscribe?
         if self.waypoints is None:
             self.waypoints = waypoints
-        # rospy.logdebug("X: {}".format(self.waypoints.waypoints[0].pose.pose.position.x))
+            # rospy.logdebug("X: {}".format(self.waypoints.waypoints[0].pose.pose.position.x))
 
     def traffic_cb(self, msg):
         # Unsubscribe?
         # if self.lights is None:
         #     rospy.logwarn(msg)
         self.lights = msg.lights
-
-    def save_data(self):
-        if self.pose is None:
-            return
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
-
-        index, dist = utils.get_next(self.pose, self.lights)
-        traffic_light = self.lights[index]
-        # Through out cases where traffic light is only partially visible?
-        if 21.0 < dist < 220.0:
-            state = traffic_light.state
-        else:
-            state = 4
-
-        cv2.imwrite("../../../training_data/data{:06d}.png".format(self.training_data_counter), cv_image)
-        self.state_file.write("{},{},{},{}\n".format(self.training_data_counter, index, dist, state))
-        self.state_file.flush()
-
-        self.training_data_counter += 1
 
     def image_cb(self, msg):
         """Identifies red lights in the incoming camera image and publishes the index
@@ -142,7 +110,6 @@ class TLDetector(object):
         """
 
         self.camera_image = msg
-        # self.has_image = True
 
         # light_wp, state = self.process_traffic_lights()
         #
@@ -210,9 +177,6 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        # if not self.has_image:
-        #     self.prev_light_loc = None
-        #     return False
         if self.camera_image is None:
             return TrafficLight.UNKNOWN
         else:
@@ -231,15 +195,16 @@ class TLDetector(object):
 
             modal_value = np.argmax(np.bincount(self.last_state_array))
 
-            rospy.logerr("Predicted: {}; Modalwert: {}; Last State Array {}".format(new_state, modal_value, self.last_state_array))
+            rospy.logerr("Predicted: {}; Modalwert: {}; Last State Array {}".format(new_state, modal_value,
+                                                                                    self.last_state_array))
 
             return modal_value
 
-        # state = 0
-        # if self.lights is not None:
-        #     state = self.lights[0].state
-        #
-        # return state
+            # state = 0
+            # if self.lights is not None:
+            #     state = self.lights[0].state
+            #
+            # return state
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -272,8 +237,7 @@ class TLDetector(object):
                                                                                 skip_orientation_check=True)[0])
 
                     rospy.logdebug("sl_pose.x={}, y={}".format(stop_line_pose.pose.position.x,
-                                                              stop_line_pose.pose.position.y))
-
+                                                               stop_line_pose.pose.position.y))
 
             index_stop_line, _ = utils.get_next(self.pose, self.stop_line_waypoints)
             return self.stop_line_waypoints_base_indices[index_stop_line], self.get_light_state()
@@ -300,9 +264,9 @@ class TLDetector(object):
                 rospy.logdebug("No self.pose available.")
             return -1, TrafficLight.UNKNOWN
 
-        # if light:
-        #     state = self.get_light_state(light)
-        #     return light_wp, state
+            # if light:
+            #     state = self.get_light_state(light)
+            #     return light_wp, state
 
 
 if __name__ == '__main__':

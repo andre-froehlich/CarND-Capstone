@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Simulator Bridge -->
+    <include file="$(find styx)/launch/server.launch" />
+
+    <!-- Screen Capture -->
+    <include file="$(find screen_capture)/launch/screen_capture.launch"/>
+</launch>

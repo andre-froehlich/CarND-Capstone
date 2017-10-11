@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="screen_capture" type="screen_capture.py" name="screen_capture_node" cwd="node" />
+</launch>

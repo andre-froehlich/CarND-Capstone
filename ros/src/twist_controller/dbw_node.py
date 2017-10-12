@@ -81,66 +81,23 @@ class DBWNode(object):
     def loop(self):
         rate = rospy.Rate(50)  # 50Hz
         while not rospy.is_shutdown():
-            # TODO: Get predicted throttle, brake, and steering using `twist_controller`
-            # You should only publish the control commands if dbw is enabled
-            # throttle, brake, steering = self.controller.control(<proposed linear velocity>,
-            #                                                     <proposed angular velocity>,
-            #                                                     <current linear velocity>,
-            #                                                     <dbw status>,
-            #                                                     <any other argument you need>)
-
-            # rospy.logwarn("dwb_enabled={}, current_velocity={}, twist_cmd={}".format(
-            #    self.dbw_enabled, self.current_velocity != None, self.twist_cmd != None
-            # ))
-
             if (self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None):
                 throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
-
-                # if self.twist_cmd.twist.linear.x <= 0.0:
-                #     self.test = True
-                #
-                # if self.test and self.twist_cmd.twist.linear.x > 0.0:
-                #     rospy.logwarn("v_ref was 0 and is now higher")
-                #     self.test = False
-
-                # rospy.loginfo("Current_v={}, twist_v={}, Throttle={}, Brake={}, Steer={}, twist_angular_z={}".
-                #               format(self.current_velocity.twist.linear.x, self.twist_cmd.twist.linear.x,
-                #                      throttle, brake, steer, self.twist_cmd.twist.angular.z))
-
                 self.publish(throttle, brake, steer)
 
             elif not self.dbw_enabled:
                 self.controller.reset()
 
-            # if len(self.controller.twist_values[0]) > 50:
-            #     dbg_msg = Debug()
-            #     dbg_msg.v_ref       = self.controller.twist_values[0]
-            #     dbg_msg.v_cur       = self.controller.twist_values[1]
-            #     dbg_msg.brake       = self.controller.twist_values[2]
-            #     dbg_msg.throttle    = self.controller.twist_values[3]
-            #     dbg_msg.v_err       = self.controller.twist_values[4]
-            #     dbg_msg.lowpass_out = self.controller.twist_values[5]
-            #     # dbg_msg.steer       = self.controller.twist_values[6]
-            #     # dbg_msg.twist_linear_x  = self.controller.twist_values[7]
-            #     # dbg_msg.twist_angular_z = self.controller.twist_values[8]
-            #     self.debug_publisher.publish(dbg_msg)
-
             rate.sleep()
 
     def dbw_enabled_cb(self, msg):
-        # rospy.loginfo("Received dbw_enabled message.")
         self.dbw_enabled = msg
-        # rospy.logdebug(msg)
 
     def current_velocity_cb(self, msg):
-        # rospy.loginfo("Received current_velocity message.")
         self.current_velocity = msg
-        # rospy.logdebug(msg)
 
     def twist_cmd_cb(self, msg):
-        # rospy.loginfo("Received twist_cmd message.")
         self.twist_cmd = msg
-        # rospy.logdebug(msg)
 
     def publish(self, throttle, brake, steer):
         if abs(self.last_throttle - throttle) > EPSILON_THROTTLE:
@@ -152,8 +109,7 @@ class DBWNode(object):
             self.throttle_pub.publish(tcmd)
             rospy.loginfo("Issued throttle command, value={}".format(throttle))
         else:
-            pass
-            # rospy.loginfo("Did no issue throttle command, value={}, last value={}".format(throttle, self.last_throttle))
+            rospy.logdebug("Did no issue throttle command, value={}, last value={}".format(throttle, self.last_throttle))
 
         if abs(self.last_steer - steer) > EPSILON_STEER:
             self.last_steer = steer
@@ -163,9 +119,8 @@ class DBWNode(object):
             self.steer_pub.publish(scmd)
             rospy.loginfo("Issued steer command, value={}".format(steer))
         else:
-            pass
-            # rospy.loginfo(
-            #     "Did no issue steer command, value={}, last value={}".format(steer, self.last_steer))
+            rospy.logdebug(
+                "Did no issue steer command, value={}, last value={}".format(steer, self.last_steer))
 
         # self.current_velocity <= 0 to keep braking on traffic light
         if abs(self.last_brake - brake) > EPSILON_BRAKE or self.current_velocity <= 0:
@@ -178,9 +133,8 @@ class DBWNode(object):
             self.brake_pub.publish(bcmd)
             rospy.loginfo("Issued brake command, value={}".format(brake))
         else:
-            pass
-            # rospy.loginfo(
-                # "Did no issue brake command, value={}, last value={}".format(brake, self.last_brake))
+            rospy.logdebug(
+                "Did no issue brake command, value={}, last value={}".format(brake, self.last_brake))
 
 
 if __name__ == '__main__':

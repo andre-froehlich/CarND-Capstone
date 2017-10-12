@@ -35,8 +35,6 @@ class Controller(object):
 
 
     def control(self, twist_cmd, velocity_cmd):
-        # TODO: Change the arg, kwarg list to suit your needs
-
         if self.last_t is None:
             self.last_t = time.time()
             return 0.0, 0.0, 0.0
@@ -48,13 +46,8 @@ class Controller(object):
 
         delta_t = self.last_t - time.time()
         self.last_t = time.time()
-        # calculating error
+        # calculating error and acceleration
         error_v = twist_linear_x - current_velocity_x
-        # rospy.logwarn("twist_linear_x={}\tcurrent_v={}\terror_v={}".format(twist_linear_x, current_velocity_x, error_v))
-        # getting throttle from pid controller with error_v and delta_t
-        # keeping it between 0.0 and 1.0
-
-        # throttle = max(0.0, min(1.0, self.pid.step(error_v, delta_t)))
         a = self.low_pass_filter.filt(self.pid.step(error_v, delta_t))
 
         # if a < 0:
@@ -63,11 +56,7 @@ class Controller(object):
             brake = 0.0
             throttle = a * 0.75 if a > 0.0 else 0.0
         elif error_v <= 0 or twist_linear_x < 0:
-            # error_v or twist_linear_x smaller zero means braking
-            # limit to 1.0 and set throttle to 0.0
-            # brake = max(error_v, 1.0)
             brake = -a * self.total_mass * self.wheel_radius
-
 
             # keep braking as long as twist velocity < 0
             if brake > 0.0 and twist_linear_x < 0:
@@ -76,7 +65,7 @@ class Controller(object):
                 brake = 0.0
             throttle = 0.0
 
-            # rospy.logwarn("twist_linear_x={}\terror_v={}\tbrake={}".format(twist_linear_x, error_v, brake))
+            rospy.logdebug("twist_linear_x={}\terror_v={}\tbrake={}".format(twist_linear_x, error_v, brake))
 
         else:
             brake = 0.0
@@ -90,9 +79,6 @@ class Controller(object):
         self.twist_values[5].append(self.low_pass_filter.get())
 
         steer = self.yaw_controller.get_steering(twist_linear_x, twist_angular_z, current_velocity_x)
-        # self.twist_values[6].append(steer)
-        # self.twist_values[7].append(twist_linear_x)
-        # self.twist_values[8].append(twist_angular_z)
 
         return throttle, brake, steer
 

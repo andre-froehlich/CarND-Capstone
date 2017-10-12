@@ -30,7 +30,7 @@ STOP_CORRIDOR = 7
 
 class WaypointUpdater(object):
     def __init__(self):
-        rospy.init_node('waypoint_updater', log_level=rospy.DEBUG)
+        rospy.init_node('waypoint_updater', log_level=rospy.WARN)
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -65,8 +65,7 @@ class WaypointUpdater(object):
 
                 final_waypoints = None
                 # Check, how far ahead of current pose is the red traffic light
-                # rospy.logwarn("tl_index={}, closest_index={}".format(self.traffic_waypoint_index, closest_index))
-                # delta_index = sys.maxint
+                rospy.logdebug("tl_index={}, closest_index={}".format(self.traffic_waypoint_index, closest_index))
                 is_deepcopy = False
                 if self.traffic_waypoint_index != -1:  # red or yellow light ahead
                     if not self.is_braking_active:
@@ -110,7 +109,7 @@ class WaypointUpdater(object):
             rate.sleep()
 
     def adapt_speed(self, current_index, delta_index):
-        rospy.logwarn("delta_index={}".format(delta_index))
+        rospy.logdebug("delta_index={}".format(delta_index))
 
         # Apply stopping corridor and calculate stop_index
         delta_index = max(delta_index - STOP_CORRIDOR, 1)
@@ -136,31 +135,11 @@ class WaypointUpdater(object):
                 i = self.len_waypoints - 1
         start_index = i
 
-        '''
-        # Calculate distances to stop index
-        next_distances = [None] * self.len_waypoints
-        cummulated_dist = 0.0
-        i_last = stop_index
-        i = stop_index - 1
-        if i < 0:
-            i = self.len_waypoints - 1
-        while True:
-            dist = utils.dist(self.working_waypoints.waypoints[i].pose, self.working_waypoints.waypoints[i_last].pose)
-            cummulated_dist += dist
-            next_distances[i] = dist
-            i_last = i
-            i -= 1
-            if (i < 0):
-                i = self.len_waypoints - 1
-            if (i == start_index):
-                break
-        '''
-
         # Calculate necessary deceleration to stop in time
         a = -0.5 * v0v0 / dist
-        rospy.loginfo("Space for braking={}, Deceleration={}".format(dist, a))
+        rospy.logdebug("Space for braking={}, Deceleration={}".format(dist, a))
         if a < MAX_DECEL:
-            rospy.logwarn("Too late to stop. Deceleration exceeds safety limit.")
+            rospy.logdebug("Too late to stop. Deceleration exceeds safety limit.")
             return False  # Not braking
 
         # Set velocity to -0.1 for everything between stop_index and current_index
@@ -198,7 +177,6 @@ class WaypointUpdater(object):
 
     def pose_cb(self, msg):
         self.pose = msg
-        # rospy.loginfo("Received new position: x={}, y={}".format(self.pose.pose.position.x, self.pose.pose.position.y))
 
     def waypoints_cb(self, waypoints):
         if self.base_waypoints is None:
@@ -218,8 +196,7 @@ class WaypointUpdater(object):
             self.wp_dists.append(last_dist)
             self.wp_cum_dist.append(cummulated_dist)
 
-            rospy.logwarn("Waypoints loaded... found {}.".format(self.len_waypoints))
-            # rospy.logdebug(waypoints)
+            rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))
 
     def traffic_cb(self, msg):
         self.traffic_waypoint_index = msg.data
@@ -238,11 +215,6 @@ class WaypointUpdater(object):
     @staticmethod
     def set_waypoint_velocity(waypoint, velocity):
         waypoint.twist.twist.linear.x = velocity
-
-        # @staticmethod
-        # def set_waypoint_velocity2(waypoints, waypoint, velocity):
-        #     waypoints[waypoint].twist.twist.linear.x = velocity
-
 
 if __name__ == '__main__':
     try:

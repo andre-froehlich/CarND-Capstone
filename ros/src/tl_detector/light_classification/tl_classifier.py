@@ -10,7 +10,7 @@ import numpy as np
 class TLClassifier(object):
     def __init__(self):
         # file has to be in 'tl_detector' folder
-        model_path = 'andre_01.h5'
+        model_path = 'model_00.h5'
         model_file = h5py.File(model_path, mode='r')
         model_version = model_file.attrs.get('keras_version')
         keras_version = str(keras.__version__).encode('utf8')

@@ -9,7 +9,7 @@ from augmentation import augmentation_pipeline
 def get_samples_by_state(path, states, filemask):
     data_frames = []
 
-    # print path + '0-red' + "/" + filemask
+    print path + states[0] + "/" + filemask
 
     for state in states:
         # Get image path and label

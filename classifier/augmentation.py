@@ -189,7 +189,7 @@ def aug_shift(img_in, params=(-0.05, 0.05, 0.0, 0.02)):
     shift_m = np.float32([[1, 0, rand_shift_x], [0, 1, rand_shift_y]])
     img_shift = cv2.warpAffine(img_in, shift_m,
                                (np.shape(img_in)[1], np.shape(img_in)[0]),
-                               borderMode=cv2.BORDER_TRANSPARENT)
+                               borderMode=cv2.BORDER_REFLECT)
 
     return img_shift
 
@@ -206,7 +206,7 @@ def aug_rotation(img_in, params=(-4.0, 4.0, 0.0, 1.0)):
     rand_angle = get_trunc_norm(params).rvs()
 
     m = cv2.getRotationMatrix2D((cols / 2, rows / 2), rand_angle, 1)
-    dst = cv2.warpAffine(img_in, m, (cols, rows), borderMode=cv2.BORDER_TRANSPARENT)
+    dst = cv2.warpAffine(img_in, m, (cols, rows), borderMode=cv2.BORDER_REFLECT)
 
     return dst
 
@@ -246,7 +246,7 @@ def aug_perspective(img_in, params=(0.0, 0.01, 0.0, 0.005)):
     dst = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
 
     m = cv2.getPerspectiveTransform(org, dst)
-    img_out = cv2.warpPerspective(img_in, m, (width, height), borderMode=cv2.BORDER_TRANSPARENT)
+    img_out = cv2.warpPerspective(img_in, m, (width, height), borderMode=cv2.BORDER_REFLECT)
 
     return img_out
 

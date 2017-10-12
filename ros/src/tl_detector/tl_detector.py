@@ -239,8 +239,11 @@ class TLDetector(object):
                     rospy.logdebug("sl_pose.x={}, y={}".format(stop_line_pose.pose.position.x,
                                                                stop_line_pose.pose.position.y))
 
-            index_stop_line, _ = utils.get_next(self.pose, self.stop_line_waypoints)
-            return self.stop_line_waypoints_base_indices[index_stop_line], self.get_light_state()
+            index_stop_line, distance = utils.get_next(self.pose, self.stop_line_waypoints)
+            if 5.0 <= distance <= 100.0:
+                return self.stop_line_waypoints_base_indices[index_stop_line], self.get_light_state()
+            else:
+                return self.stop_line_waypoints_base_indices[index_stop_line], TrafficLight.UNKNOWN
 
             # next_tl = self.lights[index_next_tl].pose.pose
 

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from tl_train_helper import *
 from augmentation import *
 import cv2
+import os
 
 import keras
 from keras.models import Sequential
@@ -18,14 +19,15 @@ print("Tensorflow version: {}".format(tensorflow.__version__))
 
 # Load dataset to train and validate on as pandas DataFrame
 # root_path = '/Users/jakobkammerer/Google Drive/Happy Robots/train/'
-root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
-# root_path = '../training_data/'
+#root_path = '/media/student/OS/Users/andre/Google Drive/Happy Robots/train/'
+#root_path = '../training_data/'
+root_path = '../../../train_4/'
 source = 'simulator/'
-fformat = '*.png'
+fformat = '*.jpg'
 # source = 'real/'
 # fformat = '*.jpg'
 data_frames = import_data(root_path, source, fformat)
-#print(data_frames[0])
+# print(data_frames[0])
 # print(data_frames[1])
 # print(data_frames[2])
 # print(data_frames[3])
@@ -42,11 +44,6 @@ for i in range(len(data_frames)):
         # img = cv2.imread(path)
         samples_by_state[i].append(path)
 
-# print(len(samples_by_state))
-# print (len(samples_by_state[0]))
-# print type(samples_by_state[0][0])
-# print samples_by_state[0][0].shape
-
 # Split into train and test set
 train_samples_by_state = []
 val_samples_by_state = []
@@ -62,22 +59,24 @@ for samples in samples_by_state:
     i += 1
 
 # Set up generators
-batch_size = 16
-train_generator = generator_v2(train_samples_by_state, batch_size=batch_size, resize=(400, 300))
-val_generator = generator_v2(val_samples_by_state, batch_size=batch_size, resize=(400, 300))
+batch_size = 32
+input_x = 800
+input_y = 600
+train_generator = generator_v2(train_samples_by_state, batch_size=batch_size, resize=(input_x, input_y))
+val_generator = generator_v2(val_samples_by_state, batch_size=batch_size, resize=(input_x, input_y))
 
 # X, y = next(train_generator)
 # print len(X), len(y)
 # print X[0].shape, y[0]
 
-X, y = next(train_generator)
-for i in range(len(X)):
-    state = ""
-    for s in y[i]:
-        state += str(s)
-    cv2.imwrite("generator_output/sample{}_state{}.png".format(i, state), X[i])
-
-exit()
+# X, y = next(train_generator)
+# for i in range(len(X)):
+#     state = ""
+#     for s in y[i]:
+#         state += str(s)
+#     cv2.imwrite("generator_output/sample{}_state{}.png".format(i, state), X[i])
+#
+# exit()
 
 #
 #  Model
@@ -85,26 +84,61 @@ exit()
 
 model = Sequential([
     # Normalize
-    Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(600, 800, 3)),
+    Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(input_y, input_x, 3)),
 
     # Convolutional Layers
-    Convolution2D(nb_filter=6,
+    Convolution2D(nb_filter=8,
                   nb_row=5,
                   nb_col=5,
-                  activation='relu'),
-    MaxPooling2D(),
+                  subsample=(2, 2),
+                  activation='relu',
+                  init='he_normal'),
+    MaxPooling2D(pool_size=(2, 2),
+                 strides=(1, 1)),
+
     Conv2D(nb_filter=16,
            nb_row=5,
            nb_col=5,
-           activation='relu'),
-    MaxPooling2D(),
-    Dropout(0.3),
+            subsample=(1, 1),
+           activation='relu',
+           init='he_normal'),
+    MaxPooling2D(pool_size=(3, 3),
+                 strides=(2, 2)),
+
+    Conv2D(nb_filter=4,
+           nb_row=5,
+           nb_col=5,
+           subsample=(1, 1),
+           activation='relu',
+           init='he_normal'),
+    MaxPooling2D(pool_size=(4, 4),
+                 strides=(2, 2)),
+
+    Dropout(0.5),
 
     # Fully connected layers
     Flatten(),
-    Dense(84, activation='relu'),
-    Dropout(0.2),
-    Dense(4, activation='softmax')])
+    Dense(96,
+          activation='relu',
+          init='he_normal'),
+    Dropout(0.5),
+    Dense(256,
+          activation='relu',
+          init='he_normal'),
+    Dense(128,
+          activation='relu',
+          init='he_normal'),
+    Dropout(0.5),
+    Dense(64,
+          activation='relu',
+          init='he_normal'),
+    Dense(4,
+          activation='softmax',
+          init='he_normal')])
+
+print(model.summary())
+
+# exit()
 
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
@@ -115,17 +149,16 @@ model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accur
 #                            nb_epoch=2)
 
 hist = model.fit_generator(train_generator,
-                           samples_per_epoch=batch_size * 1,
-                           nb_epoch=2,
+                           samples_per_epoch=batch_size * 10,
+                           nb_epoch=40,
                            verbose=1,
                            validation_data=val_generator,
-                           nb_val_samples=batch_size * 1)
+                           nb_val_samples=batch_size * 10)
 
 # Save the model
-model.save('model/model.h5')
+model.save('model/andre_04.h5')
 
-print hist.history
-
+# print hist.history
 # Plot and history
 '''
 plt.plot(hist.history['loss'])
@@ -139,3 +172,5 @@ plt.legend(['Training Loss', 'Validation Loss', 'Training Accuracy', 'Validation
 plt.show()
 plt.savefig('history.png')
 '''
+
+dev0 = os.system("echo -n '\a'")

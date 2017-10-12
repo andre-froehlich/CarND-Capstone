@@ -54,7 +54,7 @@ class TLDetector(object):
 
         self.state = TrafficLight.UNKNOWN
         self.last_state = TrafficLight.UNKNOWN
-        self.last_state_array = np.zeros(10, dtype=np.uint8)
+        self.last_state_array = np.zeros(5, dtype=np.uint8)
         self.last_wp = -1
         self.state_count = 0
 

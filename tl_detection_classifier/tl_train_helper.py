@@ -16,6 +16,8 @@ def import_data(root_path, source, fformat):
     states = ['0-red', '1-yellow', '2-green', '3-nolight'] # 4-twilight
     data_frames = []
 
+    print root_path + source + '0-red' + "/" + fformat
+
     for state in states:
         # Get image path and label
         filepaths = glob.glob(root_path + source + state + "/" + fformat)
@@ -124,7 +126,17 @@ def generator_v2(samples_by_state, batch_size=32, augment=True, resize=None):
             if resize is not None:
                 image = cv2.resize(image, resize, interpolation=cv2.INTER_CUBIC)
             if augment:
-                image = augmentation_pipeline(image)
+                image = augmentation_pipeline(image,
+                                              brightness=True,
+                                              # color=True,
+                                              # shadow=True,
+                                              # blur=True,
+                                              shift=True,
+                                              rot=True,
+                                              perspective=True,
+                                              aug_prob=0.75,
+                                              flip_prob=0.5
+                                              )
             y_onehot = [0] * 4
             y_onehot[sample_class] = 1
 

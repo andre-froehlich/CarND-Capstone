@@ -87,7 +87,6 @@ def aug_brightness(img_in, params=(0.5, 1.5, 0.0, 1.0)):
     img_out = np.array(img_out, dtype=np.float64)
     # Set a random number for brightness adjustment and adjust
     rand_bright = get_trunc_norm(params).rvs()
-    print rand_bright
 
     img_out[:, :, 2] = img_out[:, :, 2] * rand_bright
     # set every value higher than 255 to 255
@@ -110,7 +109,7 @@ def aug_color(img_in, params=(-20.0, 20.0, 0.0, 10.0)):
     distribution = get_trunc_norm(params)
     for i in range(3):
         rand_manipulation = round(distribution.rvs())
-        print(rand_manipulation)
+        # print(rand_manipulation)
         img_out[:, :, i] = img_out[:, :, i] + rand_manipulation
         img_out[:, :, i][img_out[:, :, i] > 255] = 255
         img_out[:, :, i][img_out[:, :, i] < 0] = 0
@@ -184,7 +183,7 @@ def aug_shift(img_in, params=(-0.05, 0.05, 0.0, 0.02)):
     # Pixels
     rand_shift_x = np.int(np.shape(img_in)[1] * shift_x)
     rand_shift_y = np.int(np.shape(img_in)[0] * shift_y)
-    print rand_shift_x, rand_shift_y
+    # print rand_shift_x, rand_shift_y
 
     # Shift
     shift_m = np.float32([[1, 0, rand_shift_x], [0, 1, rand_shift_y]])
@@ -238,7 +237,7 @@ def aug_perspective(img_in, params=(0.0, 0.01, 0.0, 0.005)):
     y = height - int(round(height * distribution.rvs()))
     px4 = [x, y]
 
-    print px1, px2, px3, px4
+    # print px1, px2, px3, px4
 
     org = np.float32([px1, px2, px3, px4])
 

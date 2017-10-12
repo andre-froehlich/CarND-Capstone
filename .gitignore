@@ -1,5 +1,7 @@
 *.py[cod]
 *.h5
+!*model_00.h5
+!*model_00_real.h5
 
 build
 devel

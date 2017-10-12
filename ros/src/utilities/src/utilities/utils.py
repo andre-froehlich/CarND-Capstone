@@ -69,8 +69,43 @@ def get_closest_stop_line(tl_pose, tl_list):
 
     return closest_index
 
+TOLERANCE = 0.001
+def is_close(a, b):
+    return abs(a - b) < TOLERANCE
 
 def check_is_ahead(pose_1, pose_2):
+    # Transformation from quaternion to euler
+    quaternion = (pose_1.orientation.x,
+                  pose_1.orientation.y,
+                  pose_1.orientation.z,
+                  pose_1.orientation.w)
+    euler = tf.transformations.euler_from_quaternion(quaternion)
+    yaw = euler[2]
+
+    if is_close(yaw, math.pi / 2.0):
+        return pose_2.position.y >= pose_1.position.y
+    elif is_close(yaw, 1.5 * math.pi):
+        return pose_2.position.y < pose_1.position.y
+    else:
+        m = math.tan(euler[2])
+        m_ = -1.0 / m
+        b_ = pose_1.position.y - m_ * pose_1.position.x
+        left_facing = (0.5 * math.pi < yaw < 1.5 * math.pi)
+        p2y_ = m_ * pose_2.position.x + b_
+
+        if (left_facing):
+            if m >= 0:
+                return p2y_ <= pose_2.position.y
+            else:
+                return p2y_ > pose_2.position.y
+        else:
+            if m >= 0:
+                return p2y_ >= pose_2.position.y
+            else:
+                return p2y_ < pose_2.position.y
+
+
+def check_is_ahead_2(pose_1, pose_2):
     """
     Checks if pose_2 is in front of the vehicle (pose_1)
     :param pose_1: must (directly) contain position and orientation

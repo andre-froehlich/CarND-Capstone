@@ -4,6 +4,12 @@ import rospy
 import tf
 import math
 
+# Constants
+PI_0_5 = math.pi * 0.5
+PI_1_0 = math.pi
+PI_1_5 = math.pi * 1.5
+PI_2_0 = math.pi * 2.0
+
 # TODO Remove?
 # def get_closest_waypoint(waypoints, pose):
 #     """Identifies the closest path waypoint to the given position
@@ -82,15 +88,15 @@ def check_is_ahead(pose_1, pose_2):
     euler = tf.transformations.euler_from_quaternion(quaternion)
     yaw = euler[2]
 
-    if is_close(yaw, math.pi / 2.0):
+    if is_close(yaw, PI_0_5):
         return pose_2.position.y >= pose_1.position.y
-    elif is_close(yaw, 1.5 * math.pi):
+    elif is_close(yaw, PI_1_5):
         return pose_2.position.y < pose_1.position.y
     else:
         m = math.tan(euler[2])
         m_ = -1.0 / m
         b_ = pose_1.position.y - m_ * pose_1.position.x
-        left_facing = (0.5 * math.pi < yaw < 1.5 * math.pi)
+        left_facing = (PI_0_5 < yaw < PI_1_5)
         p2y_ = m_ * pose_2.position.x + b_
 
         if (left_facing):
@@ -122,17 +128,17 @@ def check_is_ahead_2(pose_1, pose_2):
     # Quadrant definition
     if dx == 0:
         if dy >= 0:
-            angle = 0.5 * math.pi
+            angle = 0.5 * PI_1_0
         else:
-            angle = 1.5 * math.pi
+            angle = PI_1_5
     elif dx > 0.0 and dy >= 0.0:
         angle = math.atan(dy / dx)
     elif dx > 0.0 >= dy:
-        angle = 2 * math.pi - math.atan(-dy / dx)
+        angle = PI_2_0 - math.atan(-dy / dx)
     elif dx < 0.0 and dy <= 0.0:
-        angle = math.pi + math.atan(dy / dx)
+        angle = PI_1_0 + math.atan(dy / dx)
     else:
-        angle = math.pi - math.atan(-dy / dx)
+        angle = PI_1_0 - math.atan(-dy / dx)
 
     # Transformation from quaternion to euler
     quaternion = (pose_1.orientation.x,
@@ -144,15 +150,15 @@ def check_is_ahead_2(pose_1, pose_2):
     car_angle = euler[2]
     # Normalize orientation
     while car_angle < 0:
-        car_angle += 2 * math.pi
-    while car_angle > 2 * math.pi:
-        car_angle -= 2 * math.pi
+        car_angle += PI_2_0
+    while car_angle > PI_2_0:
+        car_angle -= PI_2_0
 
-    assert (not 0 > car_angle and car_angle <= 2 * math.pi)
+    assert (not 0 > car_angle and car_angle <= PI_2_0)
 
     delta_angle = abs(angle - car_angle)
-    if delta_angle >= 0.5 * math.pi:
-        if delta_angle <= 1.5 * math.pi:
+    if delta_angle >= PI_0_5:
+        if delta_angle <= PI_1_5:
             return False
         else:
             return True

@@ -8,9 +8,9 @@ import numpy as np
 
 
 class TLClassifier(object):
-    def __init__(self):
-        # file has to be in 'tl_detector' folder
-        model_path = 'model_00.h5'
+    def __init__(self, modelpath='model_00.h5'):
+        # configure path in launch file, either tl_detector_site.launch or tl_detector.launch
+        model_path = modelpath
         model_file = h5py.File(model_path, mode='r')
         model_version = model_file.attrs.get('keras_version')
         keras_version = str(keras.__version__).encode('utf8')

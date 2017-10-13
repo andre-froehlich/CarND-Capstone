@@ -7,6 +7,7 @@ from std_msgs.msg import Int32
 from utilities import utils
 import math
 from copy import deepcopy
+import numpy as np
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -59,10 +60,11 @@ class WaypointUpdater(object):
         rate = rospy.Rate(10)  # 10Hz
         while not rospy.is_shutdown():
             if self.working_waypoints is not None and self.pose is not None:
-                closest_index, _ = utils.get_next(self.pose, self.working_waypoints.waypoints)
+                closest_index, _ = self.get_next(self.pose, self.working_waypoints.waypoints)
                 rospy.logdebug("Closed Waypoint index is: {}, x={}, y={}"
-                              .format(closest_index, self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
-                                      self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
+                               .format(closest_index,
+                                       self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
+                                       self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
 
                 final_waypoints = None
                 # Check, how far ahead of current pose is the red traffic light
@@ -79,7 +81,8 @@ class WaypointUpdater(object):
                         i = closest_index
                         while i != (self.last_zeroed_waypoints + 1):
                             wp = self.base_waypoints.waypoints[i]
-                            self.set_waypoint_velocity(self.working_waypoints.waypoints[i], self.get_waypoint_velocity(wp))
+                            self.set_waypoint_velocity(self.working_waypoints.waypoints[i],
+                                                       self.get_waypoint_velocity(wp))
                             i += 1
                             if i >= self.len_waypoints:
                                 i = 0
@@ -175,24 +178,24 @@ class WaypointUpdater(object):
 
         return True  # Braking
 
-
     def pose_cb(self, msg):
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
         if self.base_waypoints is None:
             self.base_waypoints = waypoints
+            self.waypoints_as_numpy = self.get_waypoints_as_numpy(waypoints)
             self.len_waypoints = len(self.base_waypoints.waypoints)
             self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints)
             self.working_waypoints = deepcopy(waypoints)
 
             cummulated_dist = 0.0
             for i in range(self.len_waypoints - 1):
-                dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i+1].pose)
+                dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i + 1].pose)
                 self.wp_dists.append(dist)
                 self.wp_cum_dist.append(cummulated_dist)
                 cummulated_dist += dist
-            last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints-1].pose,
+            last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints - 1].pose,
                                    self.base_waypoints.waypoints[0].pose)
             self.wp_dists.append(last_dist)
             self.wp_cum_dist.append(cummulated_dist)
@@ -212,6 +215,35 @@ class WaypointUpdater(object):
     @staticmethod
     def set_waypoint_velocity(waypoint, velocity):
         waypoint.twist.twist.linear.x = velocity
+
+    @staticmethod
+    def get_position_as_numpy(pose):
+        pos = pose.pose.position
+        return np.array([pos.x, pos.y, pos.z], dtype=float)
+
+    def get_waypoints_as_numpy(self, lane):
+        return np.array([self.get_position_as_numpy(waypoint.pose) for waypoint in lane.waypoints], dtype=float)
+
+    def get_next(self, pose, waypoints):
+        """
+        Returns index of the next list entry to base_pose
+        :param base_pose: Single Pose (e.g. current pose)
+        :param pose_list: List with poses to search for the closest
+        :return: Index of closest list entry and distance
+        """
+        assert len(waypoints) == len(self.waypoints_as_numpy)
+
+        pose = self.get_position_as_numpy(pose)
+
+        # compute total diff of x, y, z
+        diff = self.waypoints_as_numpy - pose
+
+        # compute squared distance
+        distances = np.linalg.norm(diff, axis=1)
+
+        closest_index = np.argmin(distances)
+        return closest_index, distances[closest_index]
+
 
 if __name__ == '__main__':
     try:

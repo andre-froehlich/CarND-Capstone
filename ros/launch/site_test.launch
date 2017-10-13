@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <!--DBW Node -->
-    <include file="$(find twist_controller)/launch/dbw.launch"/>
+    <include file="$(find twist_controller)/launch/dbw_test.launch"/>
 
     <!--Waypoint Loader -->
     <include file="$(find waypoint_loader)/launch/waypoint_loader_site.launch"/>

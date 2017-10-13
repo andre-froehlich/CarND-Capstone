@@ -75,29 +75,36 @@ class DBWTestNode(object):
 
     def steer_cb(self, msg):
         self.steer = msg.steering_wheel_angle_cmd
+        rospy.logdebug("Issued steering cmd: {}".format(msg))
+
 
     def throttle_cb(self, msg):
         self.throttle = msg.pedal_cmd
+        rospy.logdebug("Issued throttle cmd: {}".format(msg))
 
     def brake_cb(self, msg):
         self.brake = msg.pedal_cmd
+        rospy.logdebug("Issued brake cmd: {}".format(msg))
 
     def actual_steer_cb(self, msg):
         if self.dbw_enabled and self.steer is not None:
             self.steer_data.append({'actual': msg.steering_wheel_angle_cmd,
                                     'proposed': self.steer})
+            rospy.logwarn("Issued steer: {}, correct steer: {}".format(self.steer, msg.steering_wheel_angle_cmd))
             self.steer = None
 
     def actual_throttle_cb(self, msg):
         if self.dbw_enabled and self.throttle is not None:
             self.throttle_data.append({'actual': msg.pedal_cmd,
                                        'proposed': self.throttle})
+            rospy.logwarn("Issued throttle: {}, correct throttle: {}".format(self.throttle, msg.pedal_cmd))
             self.throttle = None
 
     def actual_brake_cb(self, msg):
         if self.dbw_enabled and self.brake is not None:
             self.brake_data.append({'actual': msg.pedal_cmd,
                                     'proposed': self.brake})
+            rospy.logwarn("Issued brake: {}, correct brake: {}".format(self.brake, msg.pedal_cmd))
             self.brake = None
 
 

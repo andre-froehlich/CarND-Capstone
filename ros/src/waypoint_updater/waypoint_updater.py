@@ -28,9 +28,10 @@ COMFORTABLE_DECEL = -2.0
 MAX_DECEL = -4.0
 STOP_CORRIDOR = 7
 
+
 class WaypointUpdater(object):
     def __init__(self):
-        rospy.init_node('waypoint_updater', log_level=rospy.WARN)
+        rospy.init_node('waypoint_updater', log_level=rospy.DEBUG)
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -49,7 +50,7 @@ class WaypointUpdater(object):
         self.lookahead_wps = None
         self.traffic_waypoint_index = -1
         self.is_braking_active = False
-        self.current_velocity = 0.0
+        self.current_velocity = None
         self.last_zeroed_waypoints = None
 
         self.loop()
@@ -59,7 +60,7 @@ class WaypointUpdater(object):
         while not rospy.is_shutdown():
             if self.working_waypoints is not None and self.pose is not None:
                 closest_index, _ = utils.get_next(self.pose, self.working_waypoints.waypoints)
-                rospy.loginfo("Closed Waypoint index is: {}, x={}, y={}"
+                rospy.logdebug("Closed Waypoint index is: {}, x={}, y={}"
                               .format(closest_index, self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
                                       self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
 
@@ -200,10 +201,6 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         self.traffic_waypoint_index = msg.data
-
-    def obstacle_cb(self, msg):
-        # TODO: Callback for /obstacle_waypoint message. We will implement it later
-        pass
 
     def current_velocity_cb(self, msg):
         self.current_velocity = msg

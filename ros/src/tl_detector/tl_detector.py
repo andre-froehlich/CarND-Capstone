@@ -42,7 +42,7 @@ class TLDetector(object):
         sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
 
         config_string = rospy.get_param("/traffic_light_config")
-	model_path = rospy.get_param("~model_path", 'model_00.h5')
+        model_path = rospy.get_param("~model_path", 'model_00.h5')
 
         self.config = yaml.load(config_string)
         self.stop_line_positions = self.config['stop_line_positions']
@@ -112,7 +112,7 @@ class TLDetector(object):
 
             # TODO use light location to zoom in on traffic light in image
             if self.lights is not None:
-                print('Simulator Light State {}'.format(self.lights[0].state))
+                rospy.logdebug('Simulator Light State {}'.format(self.lights[0].state))
 
             new_state = np.uint8(self.light_classifier.get_classification(cv_image))
 
@@ -122,7 +122,7 @@ class TLDetector(object):
 
             modal_value = np.argmax(np.bincount(self.last_state_array))
 
-            rospy.logerr("Predicted: {}; Modalwert: {}; Last State Array {}".format(new_state, modal_value,
+            rospy.loginfo("Predicted: {}; Modalwert: {}; Last State Array {}".format(new_state, modal_value,
                                                                                     self.last_state_array))
 
             return modal_value

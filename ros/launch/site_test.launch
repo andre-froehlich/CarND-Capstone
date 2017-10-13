@@ -23,4 +23,7 @@
 
     <!--Camera Info Publisher -->
     <include file="$(find camera_info_publisher)/launch/camera_info_publisher.launch"/>
+
+    <!-- Site launch or styx launch? -->
+    <param name="is_site_launch" value="True" />
 </launch>

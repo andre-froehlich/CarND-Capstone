@@ -5,4 +5,8 @@
 
     <!-- Screen Capture -->
     <include file="$(find screen_capture)/launch/screen_capture.launch"/>
+
+    <!-- Site launch or styx launch? -->
+    <param name="is_site_launch" value="False" />
+
 </launch>

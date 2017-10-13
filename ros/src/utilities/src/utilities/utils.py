@@ -65,7 +65,7 @@ def is_close(a, b):
     return abs(a - b) < TOLERANCE
 
 # TODO This is not working
-def check_is_ahead(pose_1, pose_2):
+def check_is_ahead_2(pose_1, pose_2):
     # Transformation from quaternion to euler
     quaternion = (pose_1.orientation.x,
                   pose_1.orientation.y,
@@ -97,7 +97,7 @@ def check_is_ahead(pose_1, pose_2):
                 return p2y_ < pose_2.position.y
 
 
-def check_is_ahead_2(pose_1, pose_2):
+def check_is_ahead(pose_1, pose_2):
     """
     Checks if pose_2 is in front of the vehicle (pose_1)
     :param pose_1: must (directly) contain position and orientation

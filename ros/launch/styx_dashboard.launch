@@ -23,4 +23,7 @@
 
     <!-- Traffic Light Locations and Camera Config -->
     <param name="traffic_light_config" textfile="$(find tl_detector)/sim_traffic_light_config.yaml" />
+
+    <!-- Site launch or styx launch? -->
+    <param name="is_site_launch" value="False" />
 </launch>

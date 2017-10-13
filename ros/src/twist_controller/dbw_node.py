@@ -52,6 +52,8 @@ class DBWNode(object):
         kp = rospy.get_param('~kp', 1.0)
         ki = rospy.get_param('~ki', 0.0)
         kd = rospy.get_param('~kd', 0.0)
+        is_site_launch = rospy.get_param('is_site_launch', True)
+        rospy.loginfo("Is launched in site mode: {}".format(is_site_launch))
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd', SteeringCmd, queue_size=1)
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd', ThrottleCmd, queue_size=1)
@@ -68,7 +70,7 @@ class DBWNode(object):
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
 
         # Members
-        self.dbw_enabled = True  # TODO: should be initialized with False! currently not possible since simulator sends no dbw_enabled
+        self.dbw_enabled = not is_site_launch
         self.current_velocity = None
         self.twist_cmd = None
         self.last_throttle = 0.0

@@ -420,7 +420,7 @@ class Dashboard(object):
         else:
             time = rospy.Time.now().to_nsec()
             cv_image = self._bridge.imgmsg_to_cv2(self._image, "bgr8")
-            cv2.imwrite("../../../training_data/img_time{:21d}_state{:1d}.png".format(time, state), cv_image)
+            cv2.imwrite("../../../training_data/img_time{:20d}_state{:1d}.png".format(time, state), cv_image)
 
     @staticmethod
     def close():

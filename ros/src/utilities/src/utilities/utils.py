@@ -10,6 +10,7 @@ PI_1_0 = math.pi
 PI_1_5 = math.pi * 1.5
 PI_2_0 = math.pi * 2.0
 
+
 def get_next(base_pose, pose_list, skip_orientation_check=False):
     """
     Returns index of the next list entry to base_pose
@@ -33,6 +34,7 @@ def get_next(base_pose, pose_list, skip_orientation_check=False):
                 closest_dist = dist
                 closest_index = i
     return closest_index, math.sqrt(closest_dist)
+
 
 # TODO Used by dashboard, but could we reuse get_next?
 def get_closest_stop_line(tl_pose, tl_list):
@@ -60,9 +62,13 @@ def get_closest_stop_line(tl_pose, tl_list):
 
     return closest_index
 
+
 TOLERANCE = 0.001
+
+
 def is_close(a, b):
     return abs(a - b) < TOLERANCE
+
 
 # TODO This is not working
 def check_is_ahead_2(pose_1, pose_2):
@@ -155,10 +161,12 @@ def check_is_ahead(pose_1, pose_2):
 def dist(pose_1, pose_2):
     return math.sqrt(squared_dist(pose_1, pose_2))
 
+
 def squared_dist(pose_1, pose_2):
     dx = pose_1.pose.position.x - pose_2.pose.position.x
     dy = pose_1.pose.position.y - pose_2.pose.position.y
     return dx * dx + dy * dy
+
 
 # TODO Used by dashboard, do we really need this?
 def distance2d(p1, p2):

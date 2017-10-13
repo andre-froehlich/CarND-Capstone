@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Simulator Bridge -->
+    <include file="$(find styx)/launch/server.launch" />
+
+    <!--Waypoint Loader -->
+    <include file="$(find waypoint_loader)/launch/waypoint_loader.launch"/>
+
+    <!--Waypoint Updater Node -->
+    <include file="$(find waypoint_updater)/launch/waypoint_updater.launch"/>
+
+    <!-- Site launch or styx launch? -->
+    <param name="is_site_launch" value="False" />
+</launch>

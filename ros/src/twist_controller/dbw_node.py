@@ -36,7 +36,6 @@ EPSILON_STEER = 0.05
 
 
 class DBWNode(object):
-    test = False
     def __init__(self):
         rospy.init_node('dbw_node', log_level=rospy.DEBUG)
 
@@ -81,7 +80,7 @@ class DBWNode(object):
     def loop(self):
         rate = rospy.Rate(50)  # 50Hz
         while not rospy.is_shutdown():
-            if (self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None):
+            if self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None:
                 throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
                 self.publish(throttle, brake, steer)
 
@@ -109,7 +108,8 @@ class DBWNode(object):
             self.throttle_pub.publish(tcmd)
             rospy.loginfo("Issued throttle command, value={}".format(throttle))
         else:
-            rospy.logdebug("Did no issue throttle command, value={}, last value={}".format(throttle, self.last_throttle))
+            rospy.logdebug(
+                "Did no issue throttle command, value={}, last value={}".format(throttle, self.last_throttle))
 
         if abs(self.last_steer - steer) > EPSILON_STEER:
             self.last_steer = steer

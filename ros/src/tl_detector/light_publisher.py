@@ -11,6 +11,7 @@ import numpy as np
 import rospkg
 import math
 
+
 class TLPublisher(object):
     def __init__(self):
         rospy.init_node('tl_publisher')
@@ -42,7 +43,8 @@ class TLPublisher(object):
 
         return light
 
-    def create_pose(self, x, y, z, yaw=0.):
+    @staticmethod
+    def create_pose(x, y, z, yaw=0.):
         pose = PoseStamped()
 
         pose.header = Header()

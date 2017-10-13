@@ -85,8 +85,6 @@ class Dashboard(object):
 
         # subscribe to traffic light and obstacle topics
         rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self._set_traffic_lights)
-        # rospy.Subscriber('/traffic_waypoint', Lane, self._set_traffic_waypoints)
-        # rospy.Subscriber('/obstacle_waypoint', Lane, self._set_obstacle_waypoints)
 
         # is Drive-By-Wire enabled?
         rospy.Subscriber('/dbw_enabled', Bool, self._set_dbw_enabled)
@@ -451,14 +449,6 @@ class Dashboard(object):
 
     def _set_final_waypoints(self, lane):
         self._final_waypoints = lane.waypoints
-
-    def _set_traffic_waypoints(self, msg):
-        # TODO: Callback for /traffic_waypoint message. Implement
-        pass
-
-    def _set_obstacle_waypoints(self, msg):
-        # TODO: Callback for /obstacle_waypoint message. We will implement it later
-        pass
 
     def _set_dbw_enabled(self, msg):
         self._dbw_enabled = msg

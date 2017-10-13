@@ -28,6 +28,7 @@ COMFORTABLE_DECEL = -2.0
 MAX_DECEL = -4.0
 STOP_CORRIDOR = 7
 
+
 class WaypointUpdater(object):
     def __init__(self):
         rospy.init_node('waypoint_updater', log_level=rospy.DEBUG)

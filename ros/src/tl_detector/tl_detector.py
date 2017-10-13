@@ -15,9 +15,9 @@ import numpy as np
 
 from light_classification.tl_classifier import TLClassifier
 
-# TODO Remove? STATE_COUNT_THRESHOLD = 3
 MIN_VIS_DIST = 0.0
 MAX_VIS_DIST = 100.0
+
 
 class TLDetector(object):
     def __init__(self):
@@ -28,8 +28,8 @@ class TLDetector(object):
         self.camera_image = None
         self.lights = None
 
-        sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
-        sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         '''
         /vehicle/traffic_lights provides you with the location of the traffic light in 3D map space and
@@ -38,8 +38,8 @@ class TLDetector(object):
         simulator. When testing on the vehicle, the color state will not be available. You'll need to
         rely on the position of the light and the camera image to predict it.
         '''
-        sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
+        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
+        rospy.Subscriber('/image_color', Image, self.image_cb)
 
         config_string = rospy.get_param("/traffic_light_config")
         model_path = rospy.get_param("~model_path", 'model_00.h5')
@@ -87,12 +87,10 @@ class TLDetector(object):
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
-        # TODO: Unsubscribe?
         if self.waypoints is None:
             self.waypoints = waypoints
 
     def traffic_cb(self, msg):
-        # TODO Unsubscribe?
         self.lights = msg.lights
 
     def image_cb(self, msg):

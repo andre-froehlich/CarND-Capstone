@@ -65,7 +65,7 @@ class DBWNode(object):
                                      wheel_radius, wheel_base, steer_ratio, max_lat_accel, max_steer_angle, kp, ki, kd)
 
         # Subscribe to all the topics you need to
-        rospy.Subscriber('/dbw_enabled', Bool, self.dbw_enabled_cb)
+        rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb)
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
 

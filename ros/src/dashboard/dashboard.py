@@ -87,7 +87,7 @@ class Dashboard(object):
         rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self._set_traffic_lights)
 
         # is Drive-By-Wire enabled?
-        rospy.Subscriber('/dbw_enabled', Bool, self._set_dbw_enabled)
+        rospy.Subscriber('/vehicle/dbw_enabled', Bool, self._set_dbw_enabled)
 
         # subscribe to camera image
         rospy.Subscriber('/image_color', Image, self._set_image)

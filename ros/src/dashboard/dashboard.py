@@ -28,7 +28,7 @@ RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 MAGENTA = (255, 0, 255)
 
-TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN}
+TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN, 3:WHITE}
 
 
 class Dashboard(object):

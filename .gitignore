@@ -17,3 +17,5 @@ capture/*
 
 test.py
 test2.py
+*.swp
+*.csv

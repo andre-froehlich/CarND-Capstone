@@ -11,7 +11,7 @@ ONE_MPH = 0.44704
 
 class Controller(object):
     def __init__(self, vehicle_mass, fuel_capacity, brake_deadband, decel_limit, accel_limit, wheel_radius,
-                 wheel_base, steer_ratio, max_lat_accel, max_steer_angle, kp, ki, kd):
+                 wheel_base, steer_ratio, max_lat_accel, max_steer_angle, kp, ki, kd, max_throttle):
         rospy.logdebug("wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio, max_lat_accel, max_steer_angle))
 
         self.wheel_radius = wheel_radius
@@ -19,10 +19,11 @@ class Controller(object):
         self.deadband_torque = BrakeCmd.TORQUE_MAX * self.brake_deadband
         self.total_mass = vehicle_mass + fuel_capacity * GAS_DENSITY
         self.decel_limit = decel_limit
+	self.max_throttle = max_throttle
 
         # PID controller used for velocity control
         # using kp, ki, kd from params file
-        self.pid = PID(kp, ki, kd, decel_limit, accel_limit)
+        self.pid = PID(kp, ki, kd, decel_limit, max_throttle)
         self.last_t = None
 
         # yaw_controller used for steering angle
@@ -50,9 +51,7 @@ class Controller(object):
         error_v = twist_linear_x - current_velocity_x
         a = self.low_pass_filter.filt(self.pid.step(error_v, delta_t))
 
-        # if a < 0:
         if 0.0 < error_v < 0.5:
-            # only correct when abs(error_v) greater than 0.5
             brake = 0.0
             throttle = a * 0.75 if a > 0.0 else 0.0
         elif error_v <= 0 or twist_linear_x < 0:

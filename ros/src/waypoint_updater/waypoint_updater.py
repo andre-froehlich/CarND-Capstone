@@ -3,7 +3,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, Bool
 from utilities import utils
 import math
 from copy import deepcopy
@@ -37,6 +37,7 @@ class WaypointUpdater(object):
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
+	rospy.Subscriber('/tf_init_done', Bool, self.tf_init_done_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -52,13 +53,14 @@ class WaypointUpdater(object):
         self.is_braking_active = False
         self.current_velocity = None
         self.last_zeroed_waypoints = None
+	self.tf_init_done = False
 
         self.loop()
 
     def loop(self):
         rate = rospy.Rate(10)  # 10Hz
         while not rospy.is_shutdown():
-            if self.working_waypoints is not None and self.pose is not None:
+            if self.tf_init_done and self.working_waypoints is not None and self.pose is not None:
                 closest_index, _ = utils.get_next(self.pose, self.working_waypoints.waypoints)
                 rospy.logdebug("Closed Waypoint index is: {}, x={}, y={}"
                               .format(closest_index, self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
@@ -204,6 +206,10 @@ class WaypointUpdater(object):
 
     def current_velocity_cb(self, msg):
         self.current_velocity = msg
+
+    def tf_init_done_cb(self, msg):
+	rospy.logdebug("tf init done")
+	self.tf_init_done = msg
 
     @staticmethod
     def get_waypoint_velocity(waypoint):

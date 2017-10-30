@@ -30,7 +30,7 @@ that we have created in the `__init__` function.
 
 '''
 
-EPSILON_THROTTLE = 0.05
+EPSILON_THROTTLE = 0.005
 EPSILON_BRAKE = 0.05
 EPSILON_STEER = 0.05
 
@@ -49,6 +49,7 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
+        max_throttle = rospy.get_param('~max_throttle', 0.025)
         kp = rospy.get_param('~kp', 1.0)
         ki = rospy.get_param('~ki', 0.0)
         kd = rospy.get_param('~kd', 0.0)
@@ -62,15 +63,17 @@ class DBWNode(object):
 
         # Create `TwistController` object
         self.controller = Controller(vehicle_mass, fuel_capacity, brake_deadband, decel_limit, accel_limit,
-                                     wheel_radius, wheel_base, steer_ratio, max_lat_accel, max_steer_angle, kp, ki, kd)
+                                     wheel_radius, wheel_base, steer_ratio, max_lat_accel, max_steer_angle, kp, ki, kd, max_throttle)
 
         # Subscribe to all the topics you need to
         rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb)
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
+	rospy.Subscriber('/tf_init_done', Bool, self.tf_init_done_cb)
 
         # Members
         self.dbw_enabled = not is_site_launch
+	self.tf_init_done = False
         self.current_velocity = None
         self.twist_cmd = None
         self.last_throttle = 0.0
@@ -82,17 +85,24 @@ class DBWNode(object):
     def loop(self):
         rate = rospy.Rate(50)  # 50Hz
         while not rospy.is_shutdown():
-            if self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None:
+            if self.dbw_enabled and self.tf_init_done and self.current_velocity != None and self.twist_cmd != None:
                 throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
                 self.publish(throttle, brake, steer)
 
             elif not self.dbw_enabled:
                 self.controller.reset()
+	    elif not self.tf_init_done:
+		# brake until tensorflow is initialized
+		self.publish(-1.0, BrakeCmd.TORQUE_BOO * 2, 0.0)
 
             rate.sleep()
 
     def dbw_enabled_cb(self, msg):
         self.dbw_enabled = msg
+
+    def tf_init_done_cb(self, msg):
+	rospy.logdebug("tf init done")
+	self.tf_init_done = msg
 
     def current_velocity_cb(self, msg):
         self.current_velocity = msg
@@ -134,6 +144,8 @@ class DBWNode(object):
             bcmd.pedal_cmd = brake
             self.brake_pub.publish(bcmd)
             rospy.loginfo("Issued brake command, value={}".format(brake))
+	    if not self.tf_init_done:
+		rospy.logdebug("braking ({}) while waiting for tf to init".format(brake))
         else:
             rospy.logdebug(
                 "Did no issue brake command, value={}, last value={}".format(brake, self.last_brake))

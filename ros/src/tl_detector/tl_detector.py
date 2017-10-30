@@ -7,7 +7,7 @@ import rospy
 import tf
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, Bool
 from styx_msgs.msg import Lane, Waypoint
 from styx_msgs.msg import TrafficLightArray, TrafficLight
 from utilities import utils
@@ -50,9 +50,13 @@ class TLDetector(object):
         self.stop_line_waypoints_base_indices = []
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
+	self.tf_init_done = rospy.Publisher('/tf_init_done', Bool, queue_size=1, latch=True)
 
         self.bridge = CvBridge()
+	rospy.logerr("Wait for Traffic Light Classifier to be initialized!")
         self.light_classifier = TLClassifier(model_path)
+	rospy.logerr("Traffic Light Classifier is initialized! You may proceed now.")
+	self.tf_init_done.publish(True)	
         self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN

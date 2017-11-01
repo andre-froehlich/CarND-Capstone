@@ -68,9 +68,10 @@ class Controller(object):
         error_v = twist_linear_x - current_velocity_x
         a = self._low_pass_filter.filt(self._pid.step(error_v, delta_t))
 
+        # keeping speed but minor error_v
         if 0.0 < error_v < 0.5:
             brake = 0.0
-            throttle = a * 0.75 if a > 0.0 else 0.0
+            throttle = min(self._max_throttle, a) * 0.75 if a > 0.0 else 0.0
         elif error_v <= 0 or twist_linear_x < 0:
             brake = -a * self._total_mass * self._wheel_radius
 
@@ -85,7 +86,7 @@ class Controller(object):
 
         else:
             brake = 0.0
-            throttle = min(1.0, a)
+            throttle = min(self._max_throttle, a)
 
         self._twist_values[0].append(twist_linear_x)
         self._twist_values[1].append(current_velocity_x)

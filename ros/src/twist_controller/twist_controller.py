@@ -1,3 +1,5 @@
+import os
+import csv
 from pid import PID
 from yaw_controller import YawController
 from lowpass import LowPassFilter
@@ -47,6 +49,7 @@ class Controller(object):
         self._max_data = 200
 
         rospy.logdebug("wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio, max_lat_accel, max_steer_angle))
+        self._log_data = []
 
 
     def control(self, twist_cmd, velocity_cmd):
@@ -93,7 +96,27 @@ class Controller(object):
 
         steer = self._yaw_controller.get_steering(twist_linear_x, twist_angular_z, current_velocity_x)
 
+        self._log_data.append({
+            'twist_linear_x': twist_linear_x,
+            'current_velocity_x': current_velocity_x,
+            'error_v': error_v,
+            'throttle': throttle,
+            'brake': brake,
+            'steer': steer,
+            'twist_angular_z': twist_angular_z
+        })
+
         return throttle, brake, steer
 
     def reset(self):
         self._pid.reset()
+
+    def save(self):
+        basepath = os.path.dirname(os.path.abspath(__file__))
+        logfile = os.path.join(basepath, 'twist_controller.csv')
+        fieldnames = ['twist_linear_x', 'current_velocity_x', 'error_v', 'throttle', 'brake', 'steer', 'twist_angular_z']
+        with open(logfile, 'w') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self._log_data)
+

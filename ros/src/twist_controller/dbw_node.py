@@ -95,8 +95,10 @@ class DBWNode(object):
             self._publish(throttle, brake, steer)
             rate.sleep()
 
+        self._controller.save()
+
     def _dbw_enabled_cb(self, msg):
-        self._dbw_enabled = msg
+        self._dbw_enabled = msg.data
 
     def _tf_init_done_cb(self, msg):
 	rospy.logdebug("tf init done")

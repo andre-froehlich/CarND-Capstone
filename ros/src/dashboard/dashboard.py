@@ -451,7 +451,7 @@ class Dashboard(object):
         self._final_waypoints = lane.waypoints
 
     def _set_dbw_enabled(self, msg):
-        self._dbw_enabled = msg
+        self._dbw_enabled = msg.data
 
     def _set_current_velocity(self, msg):
         self._current_velocity = msg

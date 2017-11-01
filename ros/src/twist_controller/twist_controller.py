@@ -75,8 +75,8 @@ class Controller(object):
         elif error_v <= 0 or twist_linear_x < 0:
             brake = -a * self._total_mass * self._wheel_radius
 
-            # keep braking as long as twist velocity < 0
-            if brake > 0.0 and twist_linear_x < 0:
+            # keep braking while not moving, e.g. traffic lights
+            if brake > 0.0 and twist_linear_x < 0.0 and current_velocity_x < 5.0:
                 brake = BrakeCmd.TORQUE_MAX * 0.5
             elif brake < self._deadband_torque:
                 brake = 0.0

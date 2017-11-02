@@ -30,10 +30,6 @@ that we have created in the `__init__` function.
 
 '''
 
-EPSILON_THROTTLE = 0.05
-EPSILON_BRAKE = 0.05
-EPSILON_STEER = 0.05
-
 
 class DBWNode(object):
     def __init__(self):
@@ -101,42 +97,24 @@ class DBWNode(object):
         self.twist_cmd = msg
 
     def publish(self, throttle, brake, steer):
-        if abs(self.last_throttle - throttle) > EPSILON_THROTTLE:
-            self.last_throttle = throttle
-            tcmd = ThrottleCmd()
-            tcmd.enable = True
-            tcmd.pedal_cmd_type = ThrottleCmd.CMD_PERCENT
-            tcmd.pedal_cmd = throttle
-            self.throttle_pub.publish(tcmd)
-            rospy.loginfo("Issued throttle command, value={}".format(throttle))
-        else:
-            rospy.logdebug(
-                "Did no issue throttle command, value={}, last value={}".format(throttle, self.last_throttle))
+        rospy.loginfo("publish throttle={} brake={} steer={}".format(throttle, brake, steer))
 
-        if abs(self.last_steer - steer) > EPSILON_STEER:
-            self.last_steer = steer
-            scmd = SteeringCmd()
-            scmd.enable = True
-            scmd.steering_wheel_angle_cmd = steer
-            self.steer_pub.publish(scmd)
-            rospy.loginfo("Issued steer command, value={}".format(steer))
-        else:
-            rospy.logdebug(
-                "Did no issue steer command, value={}, last value={}".format(steer, self.last_steer))
+        throttle_command = ThrottleCmd()
+        throttle_command.enable = True
+        throttle_command.pedal_cmd_type = ThrottleCmd.CMD_PERCENT
+        throttle_command.pedal_cmd = throttle
+        self.throttle_pub.publish(throttle_command)
 
-        # self.current_velocity <= 0 to keep braking on traffic light
-        if abs(self.last_brake - brake) > EPSILON_BRAKE or self.current_velocity <= 0:
-            self.last_brake = brake
-            bcmd = BrakeCmd()
-            bcmd.enable = True
-            # braking only works with torque...
-            bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
-            bcmd.pedal_cmd = brake
-            self.brake_pub.publish(bcmd)
-            rospy.loginfo("Issued brake command, value={}".format(brake))
-        else:
-            rospy.logdebug(
-                "Did no issue brake command, value={}, last value={}".format(brake, self.last_brake))
+        steering_command = SteeringCmd()
+        steering_command.enable = True
+        steering_command.steering_wheel_angle_cmd = steer
+        self.steer_pub.publish(steering_command)
+
+        brake_command = BrakeCmd()
+        brake_command.enable = True
+        brake_command.pedal_cmd_type = BrakeCmd.CMD_TORQUE
+        brake_command.pedal_cmd = brake
+        self.brake_pub.publish(brake_command)
 
 
 if __name__ == '__main__':

@@ -97,8 +97,6 @@ class DBWNode(object):
         self.twist_cmd = msg
 
     def publish(self, throttle, brake, steer):
-        rospy.loginfo("publish throttle={} brake={} steer={}".format(throttle, brake, steer))
-
         throttle_command = ThrottleCmd()
         throttle_command.enable = True
         throttle_command.pedal_cmd_type = ThrottleCmd.CMD_PERCENT

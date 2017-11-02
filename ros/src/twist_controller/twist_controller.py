@@ -1,3 +1,5 @@
+import os
+import csv
 from pid import PID
 from yaw_controller import YawController
 from lowpass import LowPassFilter
@@ -10,33 +12,51 @@ ONE_MPH = 0.44704
 
 
 class Controller(object):
-    def __init__(self, vehicle_mass, fuel_capacity, brake_deadband, decel_limit, accel_limit, wheel_radius,
-                 wheel_base, steer_ratio, max_lat_accel, max_steer_angle, kp, ki, kd):
-        rospy.logdebug("wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio, max_lat_accel, max_steer_angle))
+    def __init__(self, *args, **kwargs):
+        self._wheel_radius = kwargs['wheel_radius']
+        self._brake_deadband = kwargs['brake_deadband']
+        self._accel_limit = kwargs['accel_limit']
+        self._decel_limit = kwargs['decel_limit']
+        self._max_throttle = kwargs['max_throttle']
 
-        self.wheel_radius = wheel_radius
-        self.brake_deadband = brake_deadband
-        self.deadband_torque = BrakeCmd.TORQUE_MAX * self.brake_deadband
-        self.total_mass = vehicle_mass + fuel_capacity * GAS_DENSITY
-        self.decel_limit = decel_limit
+        vehicle_mass = kwargs['vehicle_mass']
+        fuel_capacity = kwargs['fuel_capacity']
+        self._total_mass = vehicle_mass + fuel_capacity * GAS_DENSITY
+        self._deadband_torque = BrakeCmd.TORQUE_MAX * self._brake_deadband
 
         # PID controller used for velocity control
         # using kp, ki, kd from params file
-        self.pid = PID(kp, ki, kd, decel_limit, accel_limit)
-        self.last_t = None
+        kp = kwargs['kp']
+        ki = kwargs['ki']
+        kd = kwargs['kd']
+        self._pid = PID(kp, ki, kd, self._decel_limit, self._accel_limit)
+        self._last_t = None
 
         # yaw_controller used for steering angle
-        self.yaw_controller = YawController(wheel_base, steer_ratio, 1.0, max_lat_accel, max_steer_angle)
+        wheel_base = kwargs['wheel_base']
+        steer_ratio = kwargs['steer_ratio']
+        min_speed = kwargs['min_speed']
+        max_lat_accel = kwargs['max_lat_accel']
+        max_steer_angle = kwargs['max_steer_angle']
+        yaw_args = [wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle]
+        self._yaw_controller = YawController(*yaw_args)
 
-        self.low_pass_filter = LowPassFilter(4.0, 1.0)
+        tau = kwargs['tau']
+        ts = kwargs['ts']
+        self._low_pass_filter = LowPassFilter(tau, ts)
 
-        self.twist_values = [[], [], [], [], [], [], [], [], [], []]
+        self._twist_values = [[], [], [], [], [], [], [], [], [], []]
         self._max_data = 200
 
+        rospy.logdebug(
+            "wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio,
+                                                                                               max_lat_accel,
+                                                                                               max_steer_angle))
+        self._log_data = []
 
     def control(self, twist_cmd, velocity_cmd):
-        if self.last_t is None:
-            self.last_t = time.time()
+        if self._last_t is None:
+            self._last_t = time.time()
             return 0.0, 0.0, 0.0
 
         # Calculate steering
@@ -44,24 +64,23 @@ class Controller(object):
         twist_angular_z = twist_cmd.twist.angular.z
         current_velocity_x = velocity_cmd.twist.linear.x
 
-        delta_t = self.last_t - time.time()
-        self.last_t = time.time()
+        delta_t = self._last_t - time.time()
+        self._last_t = time.time()
         # calculating error and acceleration
         error_v = twist_linear_x - current_velocity_x
-        a = self.low_pass_filter.filt(self.pid.step(error_v, delta_t))
+        a = self._low_pass_filter.filt(self._pid.step(error_v, delta_t))
 
-        # if a < 0:
+        # keeping speed but minor error_v
         if 0.0 < error_v < 0.5:
-            # only correct when abs(error_v) greater than 0.5
             brake = 0.0
-            throttle = a * 0.75 if a > 0.0 else 0.0
+            throttle = min(self._max_throttle, a) * 0.75 if a > 0.0 else 0.0
         elif error_v <= 0 or twist_linear_x < 0:
-            brake = -a * self.total_mass * self.wheel_radius
+            brake = -a * self._total_mass * self._wheel_radius
 
-            # keep braking as long as twist velocity < 0
-            if brake > 0.0 and twist_linear_x < 0:
+            # keep braking while not moving, e.g. traffic lights
+            if brake > 0.0 and twist_linear_x < 0.0 and current_velocity_x < 5.0:
                 brake = BrakeCmd.TORQUE_MAX * 0.5
-            elif brake < self.deadband_torque:
+            elif brake < self._deadband_torque:
                 brake = 0.0
             throttle = 0.0
 
@@ -69,18 +88,38 @@ class Controller(object):
 
         else:
             brake = 0.0
-            throttle = min(1.0, a)
+            throttle = min(self._max_throttle, a)
 
-        self.twist_values[0].append(twist_linear_x)
-        self.twist_values[1].append(current_velocity_x)
-        self.twist_values[2].append(brake)
-        self.twist_values[3].append(throttle)
-        self.twist_values[4].append(error_v)
-        self.twist_values[5].append(self.low_pass_filter.get())
+        self._twist_values[0].append(twist_linear_x)
+        self._twist_values[1].append(current_velocity_x)
+        self._twist_values[2].append(brake)
+        self._twist_values[3].append(throttle)
+        self._twist_values[4].append(error_v)
+        self._twist_values[5].append(self._low_pass_filter.get())
 
-        steer = self.yaw_controller.get_steering(twist_linear_x, twist_angular_z, current_velocity_x)
+        steer = self._yaw_controller.get_steering(twist_linear_x, twist_angular_z, current_velocity_x)
+
+        self._log_data.append({
+            'twist_linear_x': twist_linear_x,
+            'current_velocity_x': current_velocity_x,
+            'error_v': error_v,
+            'throttle': throttle,
+            'brake': brake,
+            'steer': steer,
+            'twist_angular_z': twist_angular_z
+        })
 
         return throttle, brake, steer
 
     def reset(self):
-        self.pid.reset()
+        self._pid.reset()
+
+    def save(self):
+        basepath = os.path.dirname(os.path.abspath(__file__))
+        logfile = os.path.join(basepath, 'twist_controller.csv')
+        fieldnames = ['twist_linear_x', 'current_velocity_x', 'error_v', 'throttle', 'brake', 'steer',
+                      'twist_angular_z']
+        with open(logfile, 'w') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self._log_data)

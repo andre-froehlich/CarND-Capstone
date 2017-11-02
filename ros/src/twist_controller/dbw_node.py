@@ -73,9 +73,6 @@ class DBWNode(object):
         self._tf_init_done = False
         self._current_velocity = None
         self._twist_cmd = None
-        self._last_throttle = 0.0
-        self._last_brake = 0.0
-        self._last_steer = 0.0
 
         self._loop()
 
@@ -84,7 +81,7 @@ class DBWNode(object):
         while not rospy.is_shutdown():
             throttle, brake, steer = 0.0, 0.0, 0.0
 
-            if self._dbw_enabled and self._tf_init_done and self._current_velocity != None and self._twist_cmd != None:
+            if self._dbw_enabled and self._tf_init_done and self._current_velocity is not None and self._twist_cmd is not None:
                 throttle, brake, steer = self._controller.control(self._twist_cmd, self._current_velocity)
             elif not self._dbw_enabled:
                 # reset pid controller
@@ -112,7 +109,6 @@ class DBWNode(object):
         self._twist_cmd = msg
 
     def _publish(self, throttle, brake, steer):
-        self._last_throttle = throttle
         tcmd = ThrottleCmd()
         tcmd.enable = True
         tcmd.pedal_cmd_type = ThrottleCmd.CMD_PERCENT
@@ -120,14 +116,12 @@ class DBWNode(object):
         self._throttle_pub.publish(tcmd)
         rospy.loginfo("Issued throttle command, value={}".format(throttle))
 
-        self._last_steer = steer
         scmd = SteeringCmd()
         scmd.enable = True
         scmd.steering_wheel_angle_cmd = steer
         self._steer_pub.publish(scmd)
         rospy.loginfo("Issued steer command, value={}".format(steer))
 
-        self._last_brake = brake
         bcmd = BrakeCmd()
         bcmd.enable = True
         # braking only works with torque...

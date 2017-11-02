@@ -7,6 +7,7 @@ from geometry_msgs.msg import TwistStamped
 from styx_msgs.msg import Debug
 from twist_controller import Controller
 
+
 class DBWNode(object):
     def __init__(self):
         rospy.init_node('dbw_node', log_level=rospy.DEBUG)
@@ -27,7 +28,7 @@ class DBWNode(object):
         kp = rospy.get_param('~kp', 1.0)
         ki = rospy.get_param('~ki', 0.0)
         kd = rospy.get_param('~kd', 0.0)
-        
+
         tau = rospy.get_param('~tau', 2.0)
         ts = rospy.get_param('~ts', 1.0)
 
@@ -40,23 +41,23 @@ class DBWNode(object):
         self._debug_publisher = rospy.Publisher('/debug_msg', Debug, queue_size=1)
 
         params = {
-            'vehicle_mass'      : vehicle_mass,
-            'fuel_capacity'     : fuel_capacity,
-            'brake_deadband'    : brake_deadband,
-            'decel_limit'       : decel_limit,
-            'accel_limit'       : accel_limit,
-            'wheel_radius'      : wheel_radius,
-            'wheel_base'        : wheel_base,
-            'steer_ratio'       : steer_ratio,
-            'max_lat_accel'     : max_lat_accel,
-            'max_steer_angle'   : max_steer_angle,
-            'min_speed'         : min_speed,
-            'max_throttle'      : max_throttle,
-            'kp'                : kp,
-            'ki'                : ki,
-            'kd'                : kd,
-            'tau'               : tau,
-            'ts'                : ts
+            'vehicle_mass': vehicle_mass,
+            'fuel_capacity': fuel_capacity,
+            'brake_deadband': brake_deadband,
+            'decel_limit': decel_limit,
+            'accel_limit': accel_limit,
+            'wheel_radius': wheel_radius,
+            'wheel_base': wheel_base,
+            'steer_ratio': steer_ratio,
+            'max_lat_accel': max_lat_accel,
+            'max_steer_angle': max_steer_angle,
+            'min_speed': min_speed,
+            'max_throttle': max_throttle,
+            'kp': kp,
+            'ki': ki,
+            'kd': kd,
+            'tau': tau,
+            'ts': ts
         }
         # Create `TwistController` object
         self._controller = Controller(**params)
@@ -65,11 +66,11 @@ class DBWNode(object):
         rospy.Subscriber('/vehicle/dbw_enabled', Bool, self._dbw_enabled_cb)
         rospy.Subscriber('/current_velocity', TwistStamped, self._current_velocity_cb)
         rospy.Subscriber('/twist_cmd', TwistStamped, self._twist_cmd_cb)
-	rospy.Subscriber('/tf_init_done', Bool, self._tf_init_done_cb)
+        rospy.Subscriber('/tf_init_done', Bool, self._tf_init_done_cb)
 
         # Members
         self._dbw_enabled = False
-	self._tf_init_done = False
+        self._tf_init_done = False
         self._current_velocity = None
         self._twist_cmd = None
         self._last_throttle = 0.0
@@ -88,8 +89,8 @@ class DBWNode(object):
             elif not self._dbw_enabled:
                 # reset pid controller
                 self._controller.reset()
-	    elif not self._tf_init_done:
-		# brake until tensorflow is initialized
+            elif not self._tf_init_done:
+                # brake until tensorflow is initialized
                 throttle, brake, steer = 0.0, BrakeCmd.TORQUE_BOO * 2.0, 0.0
 
             self._publish(throttle, brake, steer)
@@ -101,8 +102,8 @@ class DBWNode(object):
         self._dbw_enabled = msg.data
 
     def _tf_init_done_cb(self, msg):
-	rospy.logdebug("tf init done")
-	self._tf_init_done = msg
+        rospy.logdebug("tf init done")
+        self._tf_init_done = msg
 
     def _current_velocity_cb(self, msg):
         self._current_velocity = msg

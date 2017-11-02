@@ -17,7 +17,7 @@ class Controller(object):
         self._brake_deadband = kwargs['brake_deadband']
         self._accel_limit = kwargs['accel_limit']
         self._decel_limit = kwargs['decel_limit']
-	self._max_throttle = kwargs['max_throttle']
+        self._max_throttle = kwargs['max_throttle']
 
         vehicle_mass = kwargs['vehicle_mass']
         fuel_capacity = kwargs['fuel_capacity']
@@ -48,9 +48,11 @@ class Controller(object):
         self._twist_values = [[], [], [], [], [], [], [], [], [], []]
         self._max_data = 200
 
-        rospy.logdebug("wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio, max_lat_accel, max_steer_angle))
+        rospy.logdebug(
+            "wheel_base: {}\tsteer_ratio: {}\tmax_lat_accel: {}\tmax_steer_angle: {}\n".format(wheel_base, steer_ratio,
+                                                                                               max_lat_accel,
+                                                                                               max_steer_angle))
         self._log_data = []
-
 
     def control(self, twist_cmd, velocity_cmd):
         if self._last_t is None:
@@ -115,9 +117,9 @@ class Controller(object):
     def save(self):
         basepath = os.path.dirname(os.path.abspath(__file__))
         logfile = os.path.join(basepath, 'twist_controller.csv')
-        fieldnames = ['twist_linear_x', 'current_velocity_x', 'error_v', 'throttle', 'brake', 'steer', 'twist_angular_z']
+        fieldnames = ['twist_linear_x', 'current_velocity_x', 'error_v', 'throttle', 'brake', 'steer',
+                      'twist_angular_z']
         with open(logfile, 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(self._log_data)
-

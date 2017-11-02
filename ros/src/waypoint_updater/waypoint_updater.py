@@ -37,7 +37,7 @@ class WaypointUpdater(object):
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
-	rospy.Subscriber('/tf_init_done', Bool, self.tf_init_done_cb)
+        rospy.Subscriber('/tf_init_done', Bool, self.tf_init_done_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -53,7 +53,7 @@ class WaypointUpdater(object):
         self.is_braking_active = False
         self.current_velocity = None
         self.last_zeroed_waypoints = None
-	self.tf_init_done = False
+        self.tf_init_done = False
 
         self.loop()
 
@@ -63,8 +63,9 @@ class WaypointUpdater(object):
             if self.tf_init_done and self.working_waypoints is not None and self.pose is not None:
                 closest_index, _ = utils.get_next(self.pose, self.working_waypoints.waypoints)
                 rospy.logdebug("Closed Waypoint index is: {}, x={}, y={}"
-                              .format(closest_index, self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
-                                      self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
+                               .format(closest_index,
+                                       self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
+                                       self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
 
                 final_waypoints = None
                 # Check, how far ahead of current pose is the red traffic light
@@ -81,7 +82,8 @@ class WaypointUpdater(object):
                         i = closest_index
                         while i != (self.last_zeroed_waypoints + 1):
                             wp = self.base_waypoints.waypoints[i]
-                            self.set_waypoint_velocity(self.working_waypoints.waypoints[i], self.get_waypoint_velocity(wp))
+                            self.set_waypoint_velocity(self.working_waypoints.waypoints[i],
+                                                       self.get_waypoint_velocity(wp))
                             i += 1
                             if i >= self.len_waypoints:
                                 i = 0
@@ -177,7 +179,6 @@ class WaypointUpdater(object):
 
         return True  # Braking
 
-
     def pose_cb(self, msg):
         self.pose = msg
 
@@ -190,11 +191,11 @@ class WaypointUpdater(object):
 
             cummulated_dist = 0.0
             for i in range(self.len_waypoints - 1):
-                dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i+1].pose)
+                dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i + 1].pose)
                 self.wp_dists.append(dist)
                 self.wp_cum_dist.append(cummulated_dist)
                 cummulated_dist += dist
-            last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints-1].pose,
+            last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints - 1].pose,
                                    self.base_waypoints.waypoints[0].pose)
             self.wp_dists.append(last_dist)
             self.wp_cum_dist.append(cummulated_dist)
@@ -208,8 +209,8 @@ class WaypointUpdater(object):
         self.current_velocity = msg
 
     def tf_init_done_cb(self, msg):
-	rospy.logdebug("tf init done")
-	self.tf_init_done = msg
+        rospy.logdebug("tf init done")
+        self.tf_init_done = msg
 
     @staticmethod
     def get_waypoint_velocity(waypoint):
@@ -218,6 +219,7 @@ class WaypointUpdater(object):
     @staticmethod
     def set_waypoint_velocity(waypoint, velocity):
         waypoint.twist.twist.linear.x = velocity
+
 
 if __name__ == '__main__':
     try:

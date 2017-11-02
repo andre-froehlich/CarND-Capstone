@@ -28,7 +28,7 @@ RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 MAGENTA = (255, 0, 255)
 
-TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN, 3:WHITE}
+TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN, 3: WHITE}
 
 
 class Dashboard(object):
@@ -138,7 +138,8 @@ class Dashboard(object):
     def _update_screen(self, screen, img):
         if screen is not None and img is not None:
             # if dashboard_img is set, resize it to window dimension, generate bytes and draw it with pygame
-            image = pygame.image.fromstring(cv2.resize(img, self._window_dimensions).tobytes(), self._window_dimensions, 'RGB')
+            image = pygame.image.fromstring(cv2.resize(img, self._window_dimensions).tobytes(), self._window_dimensions,
+                                            'RGB')
             # put on _screen
             screen.blit(image, (0, 0))
             # update pygame screen

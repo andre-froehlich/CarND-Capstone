@@ -40,10 +40,11 @@ class TLClassifier(object):
 
         result = self.model.predict(image[None, :, :, :], batch_size=1)
         prediction = np.argmax(result)
+
         if prediction == 3:
             prediction = TrafficLight.UNKNOWN
 
-        rospy.logdebug("Traffic Light prediction: {}, processing time={}ns"
-                       .format(prediction, rospy.Time.now().to_nsec() - start))
+        rospy.loginfo("Traffic Light prediction result={} prediction={} time={}ms"
+                      .format(result, prediction, int(rospy.Time.now().to_nsec() - start) / 1000000))
 
         return prediction

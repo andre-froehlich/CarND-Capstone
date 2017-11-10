@@ -21,7 +21,7 @@ MAX_VIS_DIST = 100.0
 
 class TLDetector(object):
     def __init__(self):
-        rospy.init_node('tl_detector', log_level=rospy.WARN)
+        rospy.init_node('tl_detector', log_level=rospy.INFO)
 
         self.pose = None
         self.waypoints = None
@@ -43,6 +43,8 @@ class TLDetector(object):
 
         config_string = rospy.get_param("/traffic_light_config")
         model_path = rospy.get_param("~model_path", 'model_00.h5')
+
+        rospy.loginfo('using model path: {}'.format(model_path))
 
         self.config = yaml.load(config_string)
         self.stop_line_positions = self.config['stop_line_positions']
@@ -74,7 +76,8 @@ class TLDetector(object):
             # if index == 753:
             #     state = self.lights[0].state
 
-            rospy.loginfo("Next traffic light wp index={}, state={}".format(index, state))
+            # do not log because this information can be found in the topic
+            # rospy.loginfo("Next traffic light wp index={}, state={}".format(index, state))
 
             # Publish index of upcoming traffic light if its status is red or yellow
             if state == TrafficLight.GREEN or state == TrafficLight.UNKNOWN:
@@ -121,7 +124,7 @@ class TLDetector(object):
             modal_value = np.argmax(np.bincount(self.last_state_array))
 
             rospy.loginfo("Predicted: {}; Modalwert: {}; Last State Array {}".format(new_state, modal_value,
-                                                                                    self.last_state_array))
+                                                                                     self.last_state_array))
 
             return modal_value
 

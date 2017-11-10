@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<launch>
+    <!--DBW Node -->
+    <include file="$(find twist_controller)/launch/dbw.launch"/>
+
+    <!--Waypoint Loader -->
+    <include file="$(find waypoint_loader)/launch/waypoint_loader_site.launch"/>
+
+    <!--Waypoint Follower Node -->
+    <include file="$(find waypoint_follower)/launch/pure_pursuit.launch"/>
+
+    <!--Waypoint Updater Node -->
+    <include file="$(find waypoint_updater)/launch/waypoint_updater.launch"/>
+
+    <!--Camera Calibration YAML -->
+    <param name="grasshopper_calibration_yaml" textfile="$(find styx)../../../data/grasshopper_calibration.yml" />
+
+    <!--Camera Info Publisher -->
+    <include file="$(find camera_info_publisher)/launch/camera_info_publisher.launch"/>
+
+    <!-- Site launch or styx launch? -->
+    <param name="is_site_launch" value="True" />
+</launch>

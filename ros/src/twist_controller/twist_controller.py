@@ -18,6 +18,8 @@ class Controller(object):
                                                                                                max_steer_angle))
 
         self.wheel_radius = wheel_radius
+        self._steer_ratio = steer_ratio
+        self._max_steer_angle = max_steer_angle
         self.brake_deadband = brake_deadband
         self.deadband_torque = BrakeCmd.TORQUE_MAX * self.brake_deadband
         self.total_mass = vehicle_mass + fuel_capacity * GAS_DENSITY
@@ -30,11 +32,11 @@ class Controller(object):
         self.pid = PID(kp, ki, kd, decel_limit, accel_limit)
 
         # yaw_controller used for steering angle
-        self.yaw_controller = YawController(wheel_base, steer_ratio, 1.0, max_lat_accel, max_steer_angle)
+        self.yaw_controller = YawController(wheel_base, steer_ratio, max_lat_accel, max_steer_angle)
 
         self.low_pass_filter = LowPassFilter(4.0, 1.0)
 
-    def control(self, twist_cmd, current_velocity):
+    def control(self, twist_cmd, current_velocity, actual):
         if self.last_t is None:
             self.last_t = time.time()
             return 0.0, 0.0, 0.0
@@ -47,7 +49,8 @@ class Controller(object):
         twist_linear_x = twist_cmd.twist.linear.x
         twist_angular_z = twist_cmd.twist.angular.z
         current_velocity_x = current_velocity.twist.linear.x
-        steer = self.yaw_controller.get_steering(twist_linear_x, twist_angular_z, current_velocity_x)
+        steer = self.yaw_controller.get_steering(twist_linear_x, twist_angular_z, actual.linear.x)
+        steer += 2.0 * (twist_angular_z - actual.angular.z)
 
         # calculating error and acceleration
         error_v = twist_linear_x - current_velocity_x

@@ -3,8 +3,9 @@
 import rospy
 from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, Twist
 from styx_msgs.msg import Debug
+from sensor_msgs.msg import Imu
 from twist_controller import Controller
 
 '''
@@ -64,6 +65,8 @@ class DBWNode(object):
         rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb)
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
+        rospy.Subscriber('/vehicle/imu/data_raw', Imu, self.imu_cb)
+        rospy.Subscriber('/vehicle/steering_report', SteeringReport, self.steering_report_cb)
 
         # Members
         self.dbw_enabled = not is_site_launch
@@ -72,6 +75,7 @@ class DBWNode(object):
         self.last_throttle = 0.0
         self.last_brake = 0.0
         self.last_steer = 0.0
+        self._actual = Twist()
 
         self.loop()
 
@@ -79,7 +83,7 @@ class DBWNode(object):
         rate = rospy.Rate(50)  # 50Hz
         while not rospy.is_shutdown():
             if self.dbw_enabled and self.current_velocity != None and self.twist_cmd != None:
-                throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity)
+                throttle, brake, steer = self.controller.control(self.twist_cmd, self.current_velocity, self._actual)
                 self.publish(throttle, brake, steer)
 
             elif not self.dbw_enabled:
@@ -95,6 +99,12 @@ class DBWNode(object):
 
     def twist_cmd_cb(self, msg):
         self.twist_cmd = msg
+
+    def imu_cb(self, msg):
+        self._actual.angular.z = msg.angular_velocity.z
+
+    def steering_report_cb(self, msg):
+        self._actual.linear.x = msg.speed
 
     def publish(self, throttle, brake, steer):
         throttle_command = ThrottleCmd()

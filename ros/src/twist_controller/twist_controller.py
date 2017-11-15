@@ -34,7 +34,7 @@ class Controller(object):
         # yaw_controller used for steering angle
         self.yaw_controller = YawController(wheel_base, steer_ratio, max_lat_accel, max_steer_angle)
 
-        self.low_pass_filter = LowPassFilter(4.0, 1.0)
+        self.low_pass_filter = LowPassFilter(3.5, 1.0)
 
     def control(self, twist_cmd, current_velocity, actual):
         if self.last_t is None:
@@ -58,16 +58,16 @@ class Controller(object):
 
         if 0.0 < error_v < 0.5:
             brake = 0.0
-            throttle = min(self.accel_limit, a * 0.75)
+            throttle = self.accel_limit // 2
             rospy.logdebug("controller: throttle={}\tbrake={}\tsteer={} (keeping speed)".format(throttle, brake, steer))
 
-        elif error_v <= 0 or twist_linear_x < 0:
+        elif error_v <= 0 or twist_linear_x < 0 or a < 0.0:
             brake = -a * self.total_mass * self.wheel_radius
 
             # keep braking as long as twist velocity < 0
-            if brake > 0.0 and twist_linear_x < 0:
+            if abs(brake) > 0.0 and twist_linear_x < 0:
                 brake = BrakeCmd.TORQUE_MAX * 0.5
-            elif brake < self.deadband_torque:
+            elif abs(brake) < self.deadband_torque:
                 # brake using engine only
                 brake = 0.0
             throttle = 0.0

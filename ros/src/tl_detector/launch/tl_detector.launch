@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-    <node pkg="tl_detector" type="tl_detector.py" name="tl_detector" output="screen" cwd="node">
-	<param name="model_path" value="$(find tl_detector)model_00.h5" />
+    <node pkg="tl_detector" type="tl_detector.py" name="tl_detector" cwd="node">
+	    <param name="model_path" value="$(find tl_detector)model_00.h5" />
     </node>
 </launch>

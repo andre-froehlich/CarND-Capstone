@@ -130,6 +130,7 @@ class WaypointUpdater(object):
         while True:
             dist = self.wp_cum_dist[stop_index] - self.wp_cum_dist[i]
             if i == current_index or dist >= braking_distance:
+                i = current_index + (STOP_CORRIDOR // 2)
                 break
             i -= 1
             if i < 0:

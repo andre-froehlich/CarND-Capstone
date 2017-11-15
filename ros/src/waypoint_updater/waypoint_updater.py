@@ -26,7 +26,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 COMFORTABLE_DECEL = -2.0
 MAX_DECEL = -4.0
-STOP_CORRIDOR = 7
+STOP_CORRIDOR = 8
 
 
 class WaypointUpdater(object):

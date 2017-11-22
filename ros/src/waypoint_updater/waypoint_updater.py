@@ -148,7 +148,7 @@ class WaypointUpdater(object):
         # to keep breaking
         # current_index to start_index is left unchanged.
         i = stop_index
-        while i != stop_index + LOOKAHEAD_WPS:
+        while i != stop_index + self.lookahead_wps:
             self.set_waypoint_velocity(self.working_waypoints.waypoints[i], -0.1)
             i += 1
             if i >= self.len_waypoints:

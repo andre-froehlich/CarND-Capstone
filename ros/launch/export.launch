@@ -1,5 +1,5 @@
 <launch>
-  <node pkg="rosbag" type="play" name="rosbag" args="-d 2 /udacity/export.bag"/>
+  <node pkg="rosbag" type="play" name="rosbag" args="-d 2 /home/simon/udacity/carnd/term3/fourth/858300_2017-11-17-11-12-58.bag"/>
   <node name="extract" pkg="image_view" type="image_saver" respawn="false" output="screen" cwd="ROS_HOME">
     <remap from="image" to="image_raw"/>
   </node>

@@ -5,7 +5,7 @@ from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane
 from std_msgs.msg import Int32
 from utilities import utils
-import math
+import math, tf
 from copy import deepcopy
 
 '''
@@ -55,12 +55,47 @@ class WaypointUpdater(object):
 
         self.loop()
 
+    '''
+    check if wp is ahead of self.pose (current_pose)
+    '''
+    def _is_ahead(self, wp_pose):
+        dx = wp_pose.position.x - self.pose.pose.position.x
+        dy = wp_pose.position.y - self.pose.pose.position.y
+        o = self.pose.pose.orientation
+        euler = tf.transformations.euler_from_quaternion([o.x, o.y, o.z, o.w])
+        lx = math.cos(-euler[2]) * dx - math.sin(-euler[2]) * dy
+        return lx > 0.0
+
+    def _distance(self, p1, p2):
+        x = p1.x - p2.x
+        y = p1.y - p2.y
+        return math.sqrt(x*x + y*y)
+
+    def _get_next(self, wp_list):
+        retVal = None
+        if wp_list is None:
+            return retVal
+
+        last_dist = float('inf')
+        for idx, wp in enumerate(wp_list):
+            dist = self._distance(wp.pose.pose.position, self.pose.pose.position)
+            if dist < last_dist:
+                last_dist = dist
+                retVal = idx
+            if last_dist < 1.:
+                break
+
+        if not self._is_ahead(wp_list[retVal].pose.pose):
+            retVal += 1
+
+        return retVal
+
     def loop(self):
         rate = rospy.Rate(10)  # 10Hz
         while not rospy.is_shutdown():
             if self.working_waypoints is not None and self.pose is not None:
                 closest_index, _ = utils.get_next(self.pose, self.working_waypoints.waypoints)
-                rospy.logdebug("Closed Waypoint index is: {}, x={}, y={}"
+                rospy.logwarn("Closest Waypoint index is: {}, x={}, y={}"
                               .format(closest_index, self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
                                       self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
 

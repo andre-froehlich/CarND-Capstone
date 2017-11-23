@@ -70,6 +70,8 @@ class Dashboard(object):
 
     _debug_msg = None
 
+    _next_wp = -1
+
     def __init__(self):
         rospy.init_node('dashboard_node')
 
@@ -389,7 +391,10 @@ class Dashboard(object):
                 self._draw_final_waypoints()
 
                 # test text
-                margin_top = self._write_text("Happy Robots")
+                if self._base_waypoints is not None and self._current_pose is not None:
+                    self._next_wp, _ = utils.get_next(self._current_pose, self._base_waypoints)
+
+                margin_top = self._write_text("Happy Robots! Upcoming WP: #{}".format(self._next_wp))
 
                 # puts text on image where the next light is
                 # and its corresponding stop line

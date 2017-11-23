@@ -22,7 +22,7 @@ def get_next(base_pose, pose_list, skip_orientation_check=False):
     closest_index = 0
 
     for i in range(0, len(pose_list)):
-        # Check if pose in list in in front of the vehicle
+        # Check if pose in list is in front of the vehicle
         if skip_orientation_check or check_is_ahead(base_pose.pose, pose_list[i].pose.pose):
 
             # Calculate the distance between pose und pose in list
@@ -70,39 +70,6 @@ def is_close(a, b):
     return abs(a - b) < TOLERANCE
 
 
-# TODO This is not working
-def check_is_ahead_2(pose_1, pose_2):
-    # Transformation from quaternion to euler
-    quaternion = (pose_1.orientation.x,
-                  pose_1.orientation.y,
-                  pose_1.orientation.z,
-                  pose_1.orientation.w)
-    euler = tf.transformations.euler_from_quaternion(quaternion)
-    yaw = euler[2]
-
-    if is_close(yaw, PI_0_5):
-        return pose_2.position.y >= pose_1.position.y
-    elif is_close(yaw, PI_1_5):
-        return pose_2.position.y < pose_1.position.y
-    else:
-        m = math.tan(euler[2])
-        m_ = -1.0 / m
-        b_ = pose_1.position.y - m_ * pose_1.position.x
-        left_facing = (PI_0_5 < yaw < PI_1_5)
-        p2y_ = m_ * pose_2.position.x + b_
-
-        if (left_facing):
-            if m >= 0:
-                return p2y_ <= pose_2.position.y
-            else:
-                return p2y_ > pose_2.position.y
-        else:
-            if m >= 0:
-                return p2y_ >= pose_2.position.y
-            else:
-                return p2y_ < pose_2.position.y
-
-
 def check_is_ahead(pose_1, pose_2):
     """
     Checks if pose_2 is in front of the vehicle (pose_1)
@@ -114,48 +81,12 @@ def check_is_ahead(pose_1, pose_2):
     dx = pose_2.position.x - pose_1.position.x
     dy = pose_2.position.y - pose_1.position.y
 
-    # Init angle
-    angle = None
-
-    # Quadrant definition
-    if dx == 0:
-        if dy >= 0:
-            angle = 0.5 * PI_1_0
-        else:
-            angle = PI_1_5
-    elif dx > 0.0 and dy >= 0.0:
-        angle = math.atan(dy / dx)
-    elif dx > 0.0 >= dy:
-        angle = PI_2_0 - math.atan(-dy / dx)
-    elif dx < 0.0 and dy <= 0.0:
-        angle = PI_1_0 + math.atan(dy / dx)
-    else:
-        angle = PI_1_0 - math.atan(-dy / dx)
-
     # Transformation from quaternion to euler
-    quaternion = (pose_1.orientation.x,
-                  pose_1.orientation.y,
-                  pose_1.orientation.z,
-                  pose_1.orientation.w)
-    euler = tf.transformations.euler_from_quaternion(quaternion)
+    quaternion = (pose_1.orientation.x, pose_1.orientation.y, pose_1.orientation.z, pose_1.orientation.w)
+    _, _, car_angle = tf.transformations.euler_from_quaternion(quaternion)
 
-    car_angle = euler[2]
-    # Normalize orientation
-    while car_angle < 0:
-        car_angle += PI_2_0
-    while car_angle > PI_2_0:
-        car_angle -= PI_2_0
-
-    assert (not 0 > car_angle and car_angle <= PI_2_0)
-
-    delta_angle = abs(angle - car_angle)
-    if delta_angle >= PI_0_5:
-        if delta_angle <= PI_1_5:
-            return False
-        else:
-            return True
-    else:
-        return True
+    p2_x = math.cos(-car_angle) * dx - math.sin(-car_angle) * dy
+    return p2_x > 0.0
 
 
 def dist(pose_1, pose_2):

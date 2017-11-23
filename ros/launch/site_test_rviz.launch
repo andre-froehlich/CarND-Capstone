@@ -15,7 +15,7 @@
     <!--Traffic Light Locations and Camera Config -->
     <param name="traffic_light_config" textfile="$(find tl_detector)/site_traffic_light_config.yaml" />
 
-    <node pkg="rviz" type="rviz" name="my_rviz" args="-d $(find styx)../../launch/default.rviz"/>
+    <node pkg="rviz" type="rviz" name="my_rviz" args="-d $(find styx)../../launch/default_2.rviz"/>
 
     <!--Camera Calibration YAML -->
     <param name="grasshopper_calibration_yaml" textfile="$(find styx)../../../data/grasshopper_calibration.yml" />

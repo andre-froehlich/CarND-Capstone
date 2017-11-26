@@ -9,13 +9,17 @@
     <!--Waypoint Follower Node -->
     <include file="$(find waypoint_follower)/launch/pure_pursuit.launch"/>
 
+    <include file="$(find dashboard)/launch/dashboard.launch" />
+
     <!--Waypoint Updater Node -->
     <include file="$(find waypoint_updater)/launch/waypoint_updater.launch"/>
+    <!--Waypoint Updater Node -->
+    <include file="$(find waypoint_updater_test)/launch/waypoint_updater_test.launch"/>
 
     <!--Traffic Light Locations and Camera Config -->
     <param name="traffic_light_config" textfile="$(find tl_detector)/site_traffic_light_config.yaml" />
 
-    <node pkg="rviz" type="rviz" name="my_rviz" args="-d $(find styx)../../launch/default.rviz"/>
+    <!-- <node pkg="rviz" type="rviz" name="my_rviz" args="-d $(find styx)../../launch/default_2.rviz"/> -->
 
     <!--Camera Calibration YAML -->
     <param name="grasshopper_calibration_yaml" textfile="$(find styx)../../../data/grasshopper_calibration.yml" />

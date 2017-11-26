@@ -22,8 +22,9 @@ as well as to verify your TL classifier.
 
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
-
+NODE_RATE = 5   # 5 Hz
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS_SITE = 20 # number of waypoints for site; must be lower since there are only ~80 wp total
 COMFORTABLE_DECEL = -2.0
 MAX_DECEL = -4.0
 STOP_CORRIDOR = 8
@@ -39,6 +40,8 @@ class WaypointUpdater(object):
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
+
+        self._is_site = rospy.get_param('~is_site_launch', True)
 
         # Member variables
         self.pose = None
@@ -91,17 +94,18 @@ class WaypointUpdater(object):
         return retVal
 
     def loop(self):
-        rate = rospy.Rate(10)  # 10Hz
+        rate = rospy.Rate(NODE_RATE)
         while not rospy.is_shutdown():
             if self.working_waypoints is not None and self.pose is not None:
                 closest_index, _ = utils.get_next(self.pose, self.working_waypoints.waypoints)
-                rospy.logwarn("Closest Waypoint index is: {}, x={}, y={}"
-                              .format(closest_index, self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
-                                      self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
+                rospy.logdebug("Closest Waypoint index is: {}, x={}, y={}".format(closest_index,
+                        self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
+                        self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
 
                 final_waypoints = None
                 # Check, how far ahead of current pose is the red traffic light
-                rospy.logdebug("tl_index={}, closest_index={}".format(self.traffic_waypoint_index, closest_index))
+                rospy.logdebug("tl_index={}, closest_index={}".format(self.traffic_waypoint_index,
+                        closest_index))
                 is_deepcopy = False
                 if self.traffic_waypoint_index != -1:  # red or yellow light ahead
                     if not self.is_braking_active:
@@ -220,6 +224,8 @@ class WaypointUpdater(object):
             self.base_waypoints = waypoints
             self.len_waypoints = len(self.base_waypoints.waypoints)
             self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints)
+            if self._is_site:
+                self.lookahead_wps = LOOKAHEAD_WPS_SITE
             self.working_waypoints = deepcopy(waypoints)
 
             cummulated_dist = 0.0

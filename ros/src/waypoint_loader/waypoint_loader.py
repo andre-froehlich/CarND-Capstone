@@ -18,7 +18,7 @@ MAX_DECEL = 1.0
 class WaypointLoader(object):
 
     def __init__(self):
-        rospy.init_node('waypoint_loader', log_level=rospy.WARN)
+        rospy.init_node('waypoint_loader')
 
         self.pub = rospy.Publisher('/base_waypoints', Lane, queue_size=1, latch=True)
 

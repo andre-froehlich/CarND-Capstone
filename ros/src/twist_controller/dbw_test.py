@@ -22,7 +22,7 @@ performing on various commands.
 
 class DBWTestNode(object):
     def __init__(self):
-        rospy.init_node('dbw_test_node')
+        rospy.init_node('dbw_test_node', log_level=rospy.ERROR)
 
         rospy.Subscriber('/vehicle/steering_cmd', SteeringCmd, self.steer_cb)
         rospy.Subscriber('/vehicle/throttle_cmd', ThrottleCmd, self.throttle_cb)

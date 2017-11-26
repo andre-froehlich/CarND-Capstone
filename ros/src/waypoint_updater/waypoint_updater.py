@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped, TwistStamped
-from styx_msgs.msg import Lane
+from geometry_msgs.msg import PoseStamped, TwistStamped, Quaternion
+from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 from utilities import utils
-import math, tf
+import math, tf, os, csv
 from copy import deepcopy
 
 '''
@@ -32,7 +32,7 @@ STOP_CORRIDOR = 8
 
 class WaypointUpdater(object):
     def __init__(self):
-        rospy.init_node('waypoint_updater', log_level=rospy.DEBUG)
+        rospy.init_node('waypoint_updater')
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -97,16 +97,15 @@ class WaypointUpdater(object):
         rate = rospy.Rate(NODE_RATE)
         while not rospy.is_shutdown():
             if self.working_waypoints is not None and self.pose is not None:
-                closest_index, _ = utils.get_next(self.pose, self.working_waypoints.waypoints)
+                closest_index, _ = utils.get_next(self.pose, self.working_waypoints)
                 rospy.logdebug("Closest Waypoint index is: {}, x={}, y={}".format(closest_index,
-                        self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
-                        self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
+                        self.working_waypoints[closest_index].pose.pose.position.x,
+                        self.working_waypoints[closest_index].pose.pose.position.y))
 
-                final_waypoints = None
                 # Check, how far ahead of current pose is the red traffic light
                 rospy.logdebug("tl_index={}, closest_index={}".format(self.traffic_waypoint_index,
                         closest_index))
-                is_deepcopy = False
+
                 if self.traffic_waypoint_index != -1:  # red or yellow light ahead
                     if not self.is_braking_active:
                         delta_index = self.traffic_waypoint_index - closest_index
@@ -117,19 +116,19 @@ class WaypointUpdater(object):
                     if self.is_braking_active:
                         i = closest_index
                         while i != (self.last_zeroed_waypoints + 1):
-                            wp = self.base_waypoints.waypoints[i]
-                            self.set_waypoint_velocity(self.working_waypoints.waypoints[i], self.get_waypoint_velocity(wp))
+                            wp = self.base_waypoints[i]
+                            self.set_waypoint_velocity(self.working_waypoints[i], self.get_waypoint_velocity(wp))
                             i += 1
                             if i >= self.len_waypoints:
                                 i = 0
                         self.is_braking_active = False
 
                 if closest_index < self.len_waypoints - self.lookahead_wps:
-                    final_waypoints = self.working_waypoints.waypoints[closest_index:closest_index + self.lookahead_wps]
+                    final_waypoints = self.working_waypoints[closest_index:closest_index + self.lookahead_wps]
                 else:
-                    final_waypoints = self.working_waypoints.waypoints[closest_index:]
+                    final_waypoints = self.working_waypoints[closest_index:]
                     rest = self.lookahead_wps - (self.len_waypoints - closest_index)
-                    final_waypoints += self.working_waypoints.waypoints[:rest]
+                    final_waypoints += self.working_waypoints[:rest]
 
                 rospy.loginfo("Length of final_waypoints is {}".format(len(final_waypoints)))
                 assert (len(final_waypoints) == self.lookahead_wps)
@@ -140,11 +139,11 @@ class WaypointUpdater(object):
                 lane.waypoints = final_waypoints
                 self.final_waypoints_pub.publish(lane)
 
-                rospy.loginfo("Published final waypoints...")
-                i = 0
-                for wp in lane.waypoints:
-                    rospy.logdebug("Index={}, velocity={}".format(i, wp.twist.twist.linear.x))
-                    i += 1
+                # rospy.loginfo("Published final waypoints...")
+                # i = 0
+                # for wp in lane.waypoints:
+                #     rospy.logdebug("Index={}, velocity={}".format(i, wp.twist.twist.linear.x))
+                #     i += 1
 
             rate.sleep()
 
@@ -188,7 +187,7 @@ class WaypointUpdater(object):
         # current_index to start_index is left unchanged.
         i = stop_index
         while i != stop_index + self.lookahead_wps:
-            self.set_waypoint_velocity(self.working_waypoints.waypoints[i], -0.1)
+            self.set_waypoint_velocity(self.working_waypoints[i], -0.1)
             i += 1
             if i >= self.len_waypoints:
                 i = 0
@@ -204,8 +203,8 @@ class WaypointUpdater(object):
         while i != start_index:
             dist = self.wp_dists[i]
             v = math.sqrt(last_speed * last_speed - 2 * dist * a)
-            if v < self.get_waypoint_velocity(self.working_waypoints.waypoints[i]):
-                self.set_waypoint_velocity(self.working_waypoints.waypoints[i], v)
+            if v < self.get_waypoint_velocity(self.working_waypoints[i]):
+                self.set_waypoint_velocity(self.working_waypoints[i], v)
                 last_speed = v
             else:
                 break
@@ -221,21 +220,21 @@ class WaypointUpdater(object):
 
     def waypoints_cb(self, waypoints):
         if self.base_waypoints is None:
-            self.base_waypoints = waypoints
-            self.len_waypoints = len(self.base_waypoints.waypoints)
+            self.base_waypoints = waypoints.waypoints
+            self.len_waypoints = len(self.base_waypoints)
             self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints)
             if self._is_site:
                 self.lookahead_wps = LOOKAHEAD_WPS_SITE
-            self.working_waypoints = deepcopy(waypoints)
+            self.working_waypoints = deepcopy(self.base_waypoints)
 
             cummulated_dist = 0.0
             for i in range(self.len_waypoints - 1):
-                dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i+1].pose)
+                dist = utils.dist(self.base_waypoints[i].pose, self.base_waypoints[i+1].pose)
                 self.wp_dists.append(dist)
                 self.wp_cum_dist.append(cummulated_dist)
                 cummulated_dist += dist
-            last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints-1].pose,
-                                   self.base_waypoints.waypoints[0].pose)
+            last_dist = utils.dist(self.base_waypoints[self.len_waypoints-1].pose,
+                                   self.base_waypoints[0].pose)
             self.wp_dists.append(last_dist)
             self.wp_cum_dist.append(cummulated_dist)
 

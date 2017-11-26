@@ -27,7 +27,7 @@ LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this 
 LOOKAHEAD_WPS_SITE = 20 # number of waypoints for site; must be lower since there are only ~80 wp total
 COMFORTABLE_DECEL = -2.0
 MAX_DECEL = -4.0
-STOP_CORRIDOR = 8
+STOP_CORRIDOR = 7
 
 
 class WaypointUpdater(object):
@@ -41,7 +41,7 @@ class WaypointUpdater(object):
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
-        self._is_site = rospy.get_param('~is_site_launch', True)
+        self._is_site = rospy.get_param('is_site_launch', False)
 
         # Member variables
         self.pose = None
@@ -188,9 +188,7 @@ class WaypointUpdater(object):
         if self.base_waypoints is None:
             self.base_waypoints = waypoints
             self.len_waypoints = len(self.base_waypoints.waypoints)
-            self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints)
-            if self._is_site:
-                self.lookahead_wps = LOOKAHEAD_WPS_SITE
+            self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints) if not self._is_site else LOOKAHEAD_WPS_SITE
             self.working_waypoints = deepcopy(waypoints)
 
             cummulated_dist = 0.0

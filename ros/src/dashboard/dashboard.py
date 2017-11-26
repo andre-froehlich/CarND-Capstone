@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os, csv
 import numpy as np
 
 import yaml
@@ -10,6 +11,9 @@ import cv2
 import matplotlib.pyplot as plt
 
 import pygame
+from pygame.locals import *
+import pygame.surfarray as surfarray
+
 import rospy
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd
 from geometry_msgs.msg import PoseStamped, TwistStamped
@@ -28,7 +32,7 @@ RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 MAGENTA = (255, 0, 255)
 
-TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN}
+TRAFFIC_STATES = {0: RED, 1: YELLOW, 2: GREEN, 3: MAGENTA}
 
 
 class Dashboard(object):
@@ -45,6 +49,7 @@ class Dashboard(object):
     _current_pose = None
     _base_waypoints = None
     _final_waypoints = None
+    _final_waypoints_test = None
     _dbw_enabled = False
     _current_velocity = None
     _twist_cmd = None
@@ -70,7 +75,13 @@ class Dashboard(object):
 
     _debug_msg = None
 
+    _log_data = list()
+    _log_data_test = list()
+    _counter = 0
+    _counter_test = 0
+
     _next_wp = -1
+    _is_site_launch = False
 
     def __init__(self):
         rospy.init_node('dashboard_node')
@@ -84,6 +95,7 @@ class Dashboard(object):
         rospy.Subscriber('/current_pose', PoseStamped, self._set_current_pose)
         rospy.Subscriber('/base_waypoints', Lane, self._set_base_waypoints)
         rospy.Subscriber('/final_waypoints', Lane, self._set_final_waypoints)
+        rospy.Subscriber('/final_waypoints_test', Lane, self._set_final_waypoints_test)
 
         # subscribe to traffic light and obstacle topics
         rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self._set_traffic_lights)
@@ -112,6 +124,11 @@ class Dashboard(object):
         # initialize screen with given parameters from debug.launch
         self._screen = self._init_screen()
 
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        self._log_file = os.path.join(base_path, 'final_waypoints.csv')
+        self._log_file_test = os.path.join(base_path, 'final_waypoints_test.csv')
+
+
         # start loop
         self._loop()
 
@@ -124,6 +141,7 @@ class Dashboard(object):
         self._ego_color = make_tuple(rospy.get_param('~ego_color', str(MAGENTA)))
         self._final_waypoints_color = make_tuple(rospy.get_param('~final_waypoints_color', str(GREEN)))
         self._base_waypoints_color = make_tuple(rospy.get_param('~base_waypoints_color', str(WHITE)))
+        self._is_site_launch = rospy.get_param('is_site_launch', False)
 
     def _init_screen(self):
         # produces error msgs and works without
@@ -143,23 +161,52 @@ class Dashboard(object):
             image = pygame.image.fromstring(cv2.resize(img, self._window_dimensions).tobytes(), self._window_dimensions, 'RGB')
             # put on _screen
             screen.blit(image, (0, 0))
+            # surfarray.blit_array(screen, cv2.resize(img, self._window_dimensions))
             # update pygame screen
             pygame.display.flip()
+            # pygame.display.update()
 
     def _draw_track(self):
         # transform base waypoints to vertices for cv2.polylines
         xs = list()
         ys = list()
         for wp in self._base_waypoints:
-            xs.append(wp.pose.pose.position.x)
-            #  normalize y values
-            ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
+            if self._is_site_launch:
+                xs.append((wp.pose.pose.position.x + 10) * 50)
+                #  normalize y values
+                ys.append(self._screen_dimensions[1] - (((wp.pose.pose.position.y + 5) * 50)))
+            else:
+                xs.append(wp.pose.pose.position.x)
+                #  normalize y values
+                ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
+
+        # rospy.logerr("draw track xs/ys: {}\n{}".format(xs, ys))
         vertices = [np.column_stack((xs, ys)).astype(np.int32)]
 
         # create empty image with screen dimensions
         self._track_image = np.empty((self._screen_dimensions[0], self._screen_dimensions[1], 3), dtype=np.uint8)
         # draw polylines of the track
         cv2.polylines(self._track_image, vertices, True, self._base_waypoints_color, 5)
+
+        # with open('../../../data/filter.csv') as wfile:
+        #     reader = csv.DictReader(wfile, ['x', 'y', 'z', 'yaw'])
+        #     # if self._base_waypoints_test is not None:
+        #     rospy.logerr("draw test base waypoints")
+        #     test_xs, test_ys = [], []
+        #     for wp in reader:
+        #         # for wp in self._base_waypoints_test:
+        #         # if self._is_site_launch:
+        #         test_xs.append((float(wp['x']) + 10) * 50)
+        #         test_ys.append(self._screen_dimensions[1] - (((float(wp['y']) + 5) * 50)))
+        #         # else:
+        #         #     xs.append(wp.pose.pose.position.x)
+        #         #     #  normalize y values
+        #         #     ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
+        #
+        #     vertices = [np.column_stack((xs, ys)).astype(np.int32)]
+        #     # draw polylines of the track
+        #     cv2.polylines(self._track_image, vertices, True, YELLOW, 5)
+
 
         # draw initial car position
         self._current_pose = self._base_waypoints[-1].pose
@@ -168,8 +215,14 @@ class Dashboard(object):
     def _draw_current_position(self):
         if self._current_pose is not None:
             # get coordinates
-            x = int(self._current_pose.pose.position.x)
-            y = int(self._screen_dimensions[1] - (self._current_pose.pose.position.y - 1000.))
+            if self._is_site_launch:
+                # rospy.logerr("_draw_current_position")
+                x = (int(self._current_pose.pose.position.x) + 10) * 50
+                y = int(self._screen_dimensions[1] - (((self._current_pose.pose.position.y + 5) * 50)))
+            else:
+                x = int(self._current_pose.pose.position.x)
+                y = int(self._screen_dimensions[1] - (self._current_pose.pose.position.y - 1000.))
+
             # draw filled circle at position
             cv2.circle(self._dashboard_img, (x, y), 10, self._ego_color, -1)
             # print coordinates to point
@@ -208,9 +261,15 @@ class Dashboard(object):
                 # ... translate state into color ...
                 color = TRAFFIC_STATES[key]
                 for tl in val:
-                    # ... get coordinates ...
-                    x = int(tl[0])
-                    y = int(self._screen_dimensions[1] - (tl[1] - 1000.))
+                    if self._is_site_launch:
+                        # rospy.logerr("_draw_traffic_lights")
+                        x = int(tl[0] + 10) * 50
+                        y = int(self._screen_dimensions[1] - (((tl[1] + 5) * 50)))
+                    else:
+                        # ... get coordinates ...
+                        x = int(tl[0])
+                        y = int(self._screen_dimensions[1] - (tl[1] - 1000.))
+
                     # ... draw circle and print text
                     cv2.circle(self._dashboard_img, (x, y), 15, color, -1)
                     self._put_position_to_circle((x, y))
@@ -224,11 +283,10 @@ class Dashboard(object):
             state = GREEN
         text = "DBW"
         size, baseline = self._get_text_size(text)
-        radius = 20
+        radius = 10
         cv2.putText(self._dashboard_img, text, (self._screen_dimensions[0] - (size[0] + 15), size[1] + 15),
                     cv2.FONT_HERSHEY_COMPLEX, 1, self._text_color, 2)
-        cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius + 15), size[1] + radius), radius, state,
-                   -1)
+        cv2.circle(self._dashboard_img, (self._screen_dimensions[0] - (radius + 15), size[1] + radius), radius, state, -1)
 
     def _draw_final_waypoints(self):
         """
@@ -239,13 +297,38 @@ class Dashboard(object):
             ys = list()
             # iterate final waypoints ...
             for wp in self._final_waypoints:
-                xs.append(wp.pose.pose.position.x)
-                #  normalize y values
-                ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
+                if self._is_site_launch:
+                    xs.append((wp.pose.pose.position.x + 10) * 50)
+                    ys.append(self._screen_dimensions[1] - (((wp.pose.pose.position.y + 5) * 50)))
+                else:
+                    xs.append(wp.pose.pose.position.x)
+                    #  normalize y values
+                    ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
             # stack them as vertices
             vertices = [np.column_stack((xs, ys)).astype(np.int32)]
             # draw polylines of the track
             cv2.polylines(self._dashboard_img, vertices, False, self._final_waypoints_color, 8)
+
+    def _draw_final_waypoints_test(self):
+        """
+            draws a polyline according to the final_waypoints over the base track
+        """
+        if self._final_waypoints_test is not None and self._dashboard_img is not None:
+            xs = list()
+            ys = list()
+            # iterate final waypoints ...
+            for wp in self._final_waypoints_test:
+                if self._is_site_launch:
+                    xs.append((wp.pose.pose.position.x + 10) * 50)
+                    ys.append(self._screen_dimensions[1] - (((wp.pose.pose.position.y + 5) * 50)))
+                else:
+                    xs.append(wp.pose.pose.position.x)
+                    #  normalize y values
+                    ys.append(self._screen_dimensions[1] - (wp.pose.pose.position.y - 1000.))
+            # stack them as vertices
+            vertices = [np.column_stack((xs, ys)).astype(np.int32)]
+            # draw polylines of the track
+            cv2.polylines(self._dashboard_img, vertices, False, BLUE, 8)
 
     def _write_next_traffic_light(self, margin_top=15):
         """
@@ -316,11 +399,11 @@ class Dashboard(object):
         # brake gauge border
         cv2.rectangle(self._dashboard_img, (2000, 100), (2100, 200), self._text_color, thickness=2)
         # brake percentage
-        cv2.rectangle(self._dashboard_img, (2000, int(200 - brake_precent * 100)), (2100, 200), RED, thickness=-1)
+        cv2.rectangle(self._dashboard_img, (2000, int(200 - brake_precent)), (2100, 200), RED, thickness=-1)
 
         self._write_text("{0:.1f}".format(throttle_precent * 100), margin_left=1750, margin_top=15)
         self._write_text("Th", margin_left=1800, margin_top=205)
-        self._write_text("{0:.2f}".format(brake_precent * 100), margin_left=1950, margin_top=15)
+        self._write_text("{0:.2f}".format(brake_precent), margin_left=1950, margin_top=15)
         self._write_text("B", margin_left=2000, margin_top=205)
 
     def _print_steering(self):
@@ -334,7 +417,7 @@ class Dashboard(object):
         angle = 0
         start_angle = 180
         end_angle = 360
-        cv2.ellipse(self._dashboard_img, center, axes, angle, start_angle, end_angle, self._text_color, 10)
+        cv2.ellipse(self._dashboard_img, center, axes, angle, start_angle, end_angle, self._text_color, 25)
         cv2.circle(self._dashboard_img, (1650, 100), 10, BLUE, -1)
         if self._steering_cmd is not None:
             angle = self._steering_cmd.steering_wheel_angle_cmd
@@ -389,6 +472,7 @@ class Dashboard(object):
 
                 # draw available final waypoints on top of track
                 self._draw_final_waypoints()
+                self._draw_final_waypoints_test()
 
                 # test text
                 if self._base_waypoints is not None and self._current_pose is not None:
@@ -414,6 +498,7 @@ class Dashboard(object):
             # wait for next iteration
             rate.sleep()
 
+        # self._save_log()
         # clean shutdown
         self.close()
 
@@ -426,6 +511,17 @@ class Dashboard(object):
             time = rospy.Time.now().to_nsec()
             cv_image = self._bridge.imgmsg_to_cv2(self._image, "bgr8")
             cv2.imwrite("../../../training_data/img_time{:20d}_state{:1d}.png".format(time, state), cv_image)
+
+    def _save_log(self):
+        with open(self._log_file, 'w') as f:
+            writer = csv.DictWriter(f, fieldnames=['id', 'pos_x', 'pos_y', 'pos_z', 'orient_x', 'orient_y', 'orient_z', 'orient_w'])
+            writer.writeheader()
+            writer.writerows(self._log_data)
+
+        with open(self._log_file_test, 'w') as f:
+            writer = csv.DictWriter(f, fieldnames=['id', 'pos_x', 'pos_y', 'pos_z', 'orient_x', 'orient_y', 'orient_z', 'orient_w'])
+            writer.writeheader()
+            writer.writerows(self._log_data_test)
 
     @staticmethod
     def close():
@@ -454,6 +550,29 @@ class Dashboard(object):
 
     def _set_final_waypoints(self, lane):
         self._final_waypoints = lane.waypoints
+
+        for idx, wp in enumerate(lane.waypoints):
+            pos = wp.pose.pose.position
+            orient = wp.pose.pose.orientation
+            self._log_data.append({
+                'id': "{}_{}".format(self._counter, idx), 'pos_x': pos.x,
+                'pos_y': pos.y, 'pos_z': pos.z, 'orient_x': orient.x,
+                'orient_y': orient.y, 'orient_z': orient.z, 'orient_w': orient.w
+            })
+        self._counter += 1
+
+    def _set_final_waypoints_test(self, lane):
+        self._final_waypoints_test = lane.waypoints
+        for idx, wp in enumerate(lane.waypoints):
+            pos = wp.pose.pose.position
+            orient = wp.pose.pose.orientation
+            self._log_data_test.append({
+                'id': "{}_{}".format(self._counter_test, idx), 'pos_x': pos.x,
+                'pos_y': pos.y, 'pos_z': pos.z, 'orient_x': orient.x,
+                'orient_y': orient.y, 'orient_z': orient.z, 'orient_w': orient.w
+            })
+        self._counter_test += 1
+
 
     def _set_dbw_enabled(self, msg):
         self._dbw_enabled = msg

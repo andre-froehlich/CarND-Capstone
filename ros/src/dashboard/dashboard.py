@@ -441,11 +441,10 @@ class Dashboard(object):
         setter for base points and invokes drawing of the track image
         :param lane:
         """
-        if self._base_waypoints is None:
-            self._base_waypoints = lane.waypoints
-            # draws track image right after setting waypoints
-            # this way it only has to be done once
-            self._draw_track()
+        self._base_waypoints = lane.waypoints
+        # draws track image right after setting waypoints
+        # this way it only has to be done once
+        self._draw_track()
 
     def _set_final_waypoints(self, lane):
         self._final_waypoints = lane.waypoints

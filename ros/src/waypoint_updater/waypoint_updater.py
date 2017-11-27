@@ -22,11 +22,12 @@ as well as to verify your TL classifier.
 
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
-
-LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
+NODE_RATE = 5   # 5 Hz
+LOOKAHEAD_WPS = 100  # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS_SITE = 20 # number of waypoints for site; must be lower since there are only ~80 wp total
 COMFORTABLE_DECEL = -2.0
 MAX_DECEL = -4.0
-STOP_CORRIDOR = 8
+STOP_CORRIDOR = 6
 
 
 class WaypointUpdater(object):
@@ -39,6 +40,8 @@ class WaypointUpdater(object):
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
+
+        self._is_site = rospy.get_param('is_site_launch', False)
 
         # Member variables
         self.pose = None
@@ -56,17 +59,18 @@ class WaypointUpdater(object):
         self.loop()
 
     def loop(self):
-        rate = rospy.Rate(10)  # 10Hz
+        rate = rospy.Rate(NODE_RATE)
         while not rospy.is_shutdown():
             if self.working_waypoints is not None and self.pose is not None:
                 closest_index, _ = utils.get_next(self.pose, self.working_waypoints.waypoints)
-                rospy.logdebug("Closed Waypoint index is: {}, x={}, y={}"
-                              .format(closest_index, self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
-                                      self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
+                rospy.logdebug("Closest Waypoint index is: {}, x={}, y={}".format(closest_index,
+                        self.working_waypoints.waypoints[closest_index].pose.pose.position.x,
+                        self.working_waypoints.waypoints[closest_index].pose.pose.position.y))
 
                 final_waypoints = None
                 # Check, how far ahead of current pose is the red traffic light
-                rospy.logdebug("tl_index={}, closest_index={}".format(self.traffic_waypoint_index, closest_index))
+                rospy.logdebug("tl_index={}, closest_index={}".format(self.traffic_waypoint_index,
+                        closest_index))
                 is_deepcopy = False
                 if self.traffic_waypoint_index != -1:  # red or yellow light ahead
                     if not self.is_braking_active:
@@ -148,7 +152,7 @@ class WaypointUpdater(object):
         # to keep breaking
         # current_index to start_index is left unchanged.
         i = stop_index
-        while i != stop_index + LOOKAHEAD_WPS:
+        while i != stop_index + self.lookahead_wps:
             self.set_waypoint_velocity(self.working_waypoints.waypoints[i], -0.1)
             i += 1
             if i >= self.len_waypoints:
@@ -181,24 +185,25 @@ class WaypointUpdater(object):
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
-        if self.base_waypoints is None:
-            self.base_waypoints = waypoints
-            self.len_waypoints = len(self.base_waypoints.waypoints)
-            self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints)
-            self.working_waypoints = deepcopy(waypoints)
+        self.base_waypoints = waypoints
+        self.len_waypoints = len(self.base_waypoints.waypoints)
+        self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints) if not self._is_site else LOOKAHEAD_WPS_SITE
+        self.working_waypoints = deepcopy(waypoints)
 
-            cummulated_dist = 0.0
-            for i in range(self.len_waypoints - 1):
-                dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i+1].pose)
-                self.wp_dists.append(dist)
-                self.wp_cum_dist.append(cummulated_dist)
-                cummulated_dist += dist
-            last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints-1].pose,
-                                   self.base_waypoints.waypoints[0].pose)
-            self.wp_dists.append(last_dist)
+        cummulated_dist = 0.0
+        self.wp_cum_dist = []
+        self.wp_dists = []
+        for i in range(self.len_waypoints - 1):
+            dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i+1].pose)
+            self.wp_dists.append(dist)
             self.wp_cum_dist.append(cummulated_dist)
+            cummulated_dist += dist
+        last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints-1].pose,
+                               self.base_waypoints.waypoints[0].pose)
+        self.wp_dists.append(last_dist)
+        self.wp_cum_dist.append(cummulated_dist)
 
-            rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))
+        rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))
 
     def traffic_cb(self, msg):
         self.traffic_waypoint_index = msg.data

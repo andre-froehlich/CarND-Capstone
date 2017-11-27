@@ -23,11 +23,11 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 NODE_RATE = 5   # 5 Hz
-LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 100  # Number of waypoints we will publish. You can change this number
 LOOKAHEAD_WPS_SITE = 20 # number of waypoints for site; must be lower since there are only ~80 wp total
 COMFORTABLE_DECEL = -2.0
 MAX_DECEL = -4.0
-STOP_CORRIDOR = 7
+STOP_CORRIDOR = 6
 
 
 class WaypointUpdater(object):

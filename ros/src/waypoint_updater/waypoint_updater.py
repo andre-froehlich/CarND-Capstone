@@ -185,24 +185,25 @@ class WaypointUpdater(object):
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
-        if self.base_waypoints is None:
-            self.base_waypoints = waypoints
-            self.len_waypoints = len(self.base_waypoints.waypoints)
-            self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints) if not self._is_site else LOOKAHEAD_WPS_SITE
-            self.working_waypoints = deepcopy(waypoints)
+        self.base_waypoints = waypoints
+        self.len_waypoints = len(self.base_waypoints.waypoints)
+        self.lookahead_wps = min(LOOKAHEAD_WPS, self.len_waypoints) if not self._is_site else LOOKAHEAD_WPS_SITE
+        self.working_waypoints = deepcopy(waypoints)
 
-            cummulated_dist = 0.0
-            for i in range(self.len_waypoints - 1):
-                dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i+1].pose)
-                self.wp_dists.append(dist)
-                self.wp_cum_dist.append(cummulated_dist)
-                cummulated_dist += dist
-            last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints-1].pose,
-                                   self.base_waypoints.waypoints[0].pose)
-            self.wp_dists.append(last_dist)
+        cummulated_dist = 0.0
+        self.wp_cum_dist = []
+        self.wp_dists = []
+        for i in range(self.len_waypoints - 1):
+            dist = utils.dist(self.base_waypoints.waypoints[i].pose, self.base_waypoints.waypoints[i+1].pose)
+            self.wp_dists.append(dist)
             self.wp_cum_dist.append(cummulated_dist)
+            cummulated_dist += dist
+        last_dist = utils.dist(self.base_waypoints.waypoints[self.len_waypoints-1].pose,
+                               self.base_waypoints.waypoints[0].pose)
+        self.wp_dists.append(last_dist)
+        self.wp_cum_dist.append(cummulated_dist)
 
-            rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))
+        rospy.loginfo("Waypoints loaded... found {}.".format(self.len_waypoints))
 
     def traffic_cb(self, msg):
         self.traffic_waypoint_index = msg.data
